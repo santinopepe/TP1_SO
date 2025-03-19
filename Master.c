@@ -7,8 +7,10 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define MAX_PLAYERS 9
+#define PI 3.14159265358979323846
 
 typedef struct {
     char name[16]; // Nombre del jugador
@@ -24,7 +26,7 @@ typedef struct {
     unsigned short width; // Ancho del tablero
     unsigned short hight; // Alto del tablero
     unsigned int num_players; // Cantidad de jugadores
-    Player palyer_list[9]; // Lista de jugadores
+    Player player_list[9]; // Lista de jugadores
     bool has_ended; // Indica si el juego se ha terminado
     int board_pointer[]; // Puntero al comienzo del tablero. fila-0, fila-1, ..., fila-n-1
 } Board;
@@ -63,13 +65,11 @@ void * create_shm(char * name, int size){
     return ptr;
 }
 
-sem_t * create_sem(char * name, int value){
-    //sem_t * sem =  (sem_t * ) create_shm(name, sizeof(sem_t));
+void create_sem(sem_t * sem, int value){
     if (-1 == sem_init(sem, 1, value)){ 
         perror("sem_open");
         exit(EXIT_FAILURE);
     }
-    return sem;
 }
 
 void initialize_board(Board * board){
@@ -105,7 +105,7 @@ int get_param(int argc, char * argv[], int param_array[], char * player_array[],
         } else if(strcmp(argv[i], "-p")==0){
             for (; num_players < MAX_PLAYERS || i < argc; num_players++, i++){
                 if (check_is_player(argv[i+num_players+1])){ 
-                    player_array[j] = argv[i+num_players+1];
+                    player_array[num_players] = argv[i+num_players+1];
                 }
             }
         }     
@@ -139,7 +139,7 @@ Point* generate_circle(int n, int m, int num_points) {
 
     // Generar puntos equidistantes en el círculo
     for (int i = 0; i < num_points; i++) {
-        double angle = 2 * M_PI * i / num_points;
+        double angle = 2 * PI * i / num_points;
         points[i].x = center_x + (int)(radius * cos(angle));
         points[i].y = center_y + (int)(radius * sin(angle));
     }
@@ -157,7 +157,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
     int player_it = 0;
     while(player_it < num_players || player_array[player_it]==NULL){
         
-        board->player_list[player_it].name = player_array[player_it];
+        strcpy(board->player_list[player_it].name, player_array[player_it]);
         board->player_list[player_it].points = 0;
         board->player_list[player_it].iligal_moves = 0;
         board->player_list[player_it].valid_moves = 0;
@@ -176,7 +176,10 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
         player_it++;
     }
     board->has_ended = false;
-    board->board_pointer = (int *) malloc(board->width * board->hight * sizeof(int));
+    // Memory for board_pointer is already allocated with the Board structure
+    for (int i = 0; i < board->width * board->hight; i++) {
+        board->board_pointer[i] = 0; // Initialize board cells to 0
+    }
     
 }
 
