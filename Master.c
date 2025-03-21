@@ -1,47 +1,9 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <semaphore.h>
-#include <math.h>
-#include <stdbool.h>
+#include "Utilis.h"
 
-#define MAX_PLAYERS 9
+
 #define PI 3.14159265358979323846
 
-typedef struct {
-    char name[16]; // Nombre del jugador
-    unsigned int points; // Puntaje
-    unsigned int iligal_moves; // Cantidad de solicitudes de movimientos inválidas realizadas
-    unsigned int valid_moves; // Cantidad de solicitudes de movimientos válidas realizadas
-    unsigned short coord_x, coord_y; // Coordenadas x e y en el tablero
-    pid_t pid; // Identificador de proceso
-    bool can_move; // Indica si el jugador tiene movimientos válidos disponibles
-} Player;
-    
-typedef struct {
-    unsigned short width; // Ancho del tablero
-    unsigned short hight; // Alto del tablero
-    unsigned int num_players; // Cantidad de jugadores
-    Player player_list[9]; // Lista de jugadores
-    bool has_ended; // Indica si el juego se ha terminado
-    int board_pointer[]; // Puntero al comienzo del tablero. fila-0, fila-1, ..., fila-n-1
-} Board;
 
-
-//Sincronizacion
-typedef struct {
-    sem_t changes; // Se usa para indicarle a la vista que hay cambios por imprimir
-    sem_t view_done; // Se usa para indicarle al master que la vista terminó de imprimir
-    sem_t master_mutex; // Mutex para evitar inanición del master al acceder al estado
-    sem_t game_state_mutex; // Mutex para el estado del juego
-    sem_t variable_mutex; // Mutex para la siguiente variable
-    unsigned int readers_count; // Cantidad de jugadores leyendo el estado
-} Sinchronization;
-    
 
 void * create_shm(char * name, int size){
 
@@ -101,7 +63,7 @@ int get_param(int argc, char * argv[], int param_array[], char * player_array[],
         } else if (strcmp(argv[i], "-s") == 0){
             param_array[4] = atoi(argv[i+1]);
         } else if (strcmp(argv[i], "-v") == 0){
-            view = argv[i+1];
+            (*view) = argv[i+1];
         } else if(strcmp(argv[i], "-p")==0){
             for (; num_players < MAX_PLAYERS || i < argc; num_players++, i++){
                 if (check_is_player(argv[i+num_players+1])){ 
@@ -131,7 +93,7 @@ Point* generate_circle(int n, int m, int num_points) {
     int radius = (n < m ? n : m) / 2 - 1;
 
     // Reservar memoria para los puntos
-    Point* points = (Point*)malloc(num_points * sizeof(Point));
+    Point* points = (Point*) malloc(num_points * sizeof(Point));
     if (points == NULL) {
         perror("malloc");
         exit(EXIT_FAILURE);
@@ -175,11 +137,17 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
 
         player_it++;
     }
+
     board->has_ended = false;
+
+    srand(time(NULL));
     // Memory for board_pointer is already allocated with the Board structure
     for (int i = 0; i < board->width * board->hight; i++) {
-        board->board_pointer[i] = 0; // Initialize board cells to 0
+        board->board_pointer[i] = rand() % 9 + 1; // Initialize board cells to 0
     }
+
+    free(points);
+
     
 }
 
@@ -193,8 +161,8 @@ void initialize_sync(Sinchronization * sync, int num_players){
 }
 
 int main(int argc, char * argv[]) {
-    Board * board = (Board *) create_shm("/game_state", sizeof(Board));
-    Sinchronization * sync = (Sinchronization *) create_shm("/game_sync", sizeof(Sinchronization));
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board));
+    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization));
     
     int param_array[5] ={10, 10, 200, 10, time(NULL)}; 
     char * view = NULL;
@@ -205,6 +173,10 @@ int main(int argc, char * argv[]) {
     initialize_game(param_array, player_array, view, board, num_players);
     
     initialize_sync(sync, num_players);
+
+
+
+
 
     return 0;
 
