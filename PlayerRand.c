@@ -40,14 +40,12 @@ int main(int argc, char * argv[]){
 
     srand(time(NULL));
 
-    while (!board->has_ended) {
-        sem_wait(&sync->game_state_mutex);
+       sem_wait(&sync->view_done);
 
         // Enviar solicitud de movimiento al máster
         move = rand() % 7 + 1;;
 
-        sem_post(&sync->game_state_mutex);
-    }
+       sem_post(&sync->changes);
 
     return move;
 }

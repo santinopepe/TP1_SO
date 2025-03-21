@@ -25,7 +25,13 @@ void print_board(Board * board) {
     printf("Board state:\n");
     for (int i = 0; i < board->hight; i++) {
         for (int j = 0; j < board->width; j++) {
-            printf("%d ", board->board_pointer[i * board->width + j]);
+            for(int k = 0; k < board->num_players; k++){
+                if(board->player_list[k].coord_x == j && board->player_list[k].coord_y == i){
+                    printf("X ");
+                } else{
+                    printf("%d ", board->board_pointer[i * board->width + j]);
+                }
+            }
         }
         printf("\n");
     }
@@ -57,9 +63,14 @@ int main(int argc, char * argv[]) {
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization));
 
 
-    while (!board->has_ended) {
+        printf("entre1\n");
+
+        int sem_value;
+
         // Esperar a que el máster indique que hay cambios
-        sem_wait(&sync->changes);
+        //sem_wait(&sync->changes);
+
+        printf("entre\n");
 
         // Imprimir el estado del juego
         print_board(board);
@@ -67,7 +78,6 @@ int main(int argc, char * argv[]) {
 
         // Indicar al máster que la vista terminó de imprimir
         sem_post(&sync->view_done);
-    }
 
     return 0;
 }
