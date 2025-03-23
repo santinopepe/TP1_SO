@@ -27,6 +27,52 @@ void * create_shm(char * name, int size){
     return ptr;
 }
 
+
+bool can_move(int x, int y, int width, int height, Board *board){
+    return x >= 0 && x < width && y >= 0 && y < height && board->board_pointer[y * width + x] != -1;
+  }
+  
+  int is_valid_move(Board *board, Player *player, int move, int width, int height){ 
+    int x = player->coord_x;
+    int y = player->coord_y;
+  
+    int movement[8][2] ={
+      {0, 1},
+      {1, 0},
+      {0, -1},
+      {-1, 0},
+      {1, 1},
+      {1, -1},
+      {-1, 1},
+      {-1, -1}
+    };
+  
+    x += movement[move][0];
+    y += movement[move][1];
+  
+    if(!can_move(x, y, width, height, board)){
+      int i =0;
+      while (i < 8) //si no es posibe con el numero random encontrar un mov valido lo hace a la fuerza
+      {
+        if(player->coord_x + movement[i][0] >= 0 && player->coord_x + movement[i][0] < width && player->coord_y + movement[i][1] >= 0 && player->coord_y + movement[i][1] < height && board->board_pointer[(player->coord_y + movement[i][1]) * width + player->coord_x + movement[i][0]] != -1){
+          x = player->coord_x + movement[i][0];
+          y = player->coord_y + movement[i][1];
+          break;
+        }
+        i++;
+      }
+      if (i == 8)
+      {
+        player->is_bolcked = true; //NO SE SI ES QUE ESTO SE MODIFICA ACA O SE HACE SOLO EN EL MASTER
+        return -1;
+      }
+    }
+    player->coord_x = x; //NO SE SI ES QUE SE MODIFICA ACA O DONDE SE HACE
+    player->coord_y = y;
+    return 0;
+  }
+  
+
 void create_sem(sem_t * sem, int value){
     if (-1 == sem_init(sem, 1, value)){ 
         perror("sem_open");
@@ -125,7 +171,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
         board->player_list[player_it].valid_moves = 0;
         board->player_list[player_it].coord_x = points[player_it].x;
         board->player_list[player_it].coord_y = points[player_it].y;
-        board->player_list[player_it].can_move = true;
+        board->player_list[player_it].is_bolcked = true;
 
         board->player_list[player_it].pid = fork(); //CHECKEAR SI ESTO ESTA BIEN
         if (board->player_list[player_it].pid == -1){

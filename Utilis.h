@@ -12,6 +12,7 @@
 #include <semaphore.h>
 #include <math.h>
 #include <stdbool.h>
+#include <errno.h>
 
 
 
@@ -27,7 +28,7 @@ typedef struct {
     unsigned int valid_moves; // Cantidad de solicitudes de movimientos válidas realizadas
     unsigned short coord_x, coord_y; // Coordenadas x e y en el tablero
     pid_t pid; // Identificador de proceso
-    bool can_move; // Indica si el jugador tiene movimientos válidos disponibles
+    bool is_bolcked; // Indica si el jugador tiene movimientos válidos disponibles
 } Player;
 
 typedef struct {
@@ -51,7 +52,7 @@ typedef struct {
 } Sinchronization;
 
 
-void * create_shm(char * name, int size);
+void * create_shm(char * name, int size, int flags);
 
 void create_sem(sem_t * sem, int value);
 
