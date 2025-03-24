@@ -29,32 +29,42 @@ void print_board(Board * board) {
     printf("Board state:\n");
     // Colores ANSI
     const char *colors[] = {
-        "\x1B[31m", // Rojo
-        "\x1B[32m", // Verde
-        "\x1B[33m", // Amarillo
-        "\x1B[34m", // Azul
-        "\x1B[35m", // Magenta
-        "\x1B[36m", // Cian
-        "\x1B[37m", // Blanco
-        "\x1B[91m", // Rojo claro
-        "\x1B[92m"  // Verde claro
+            "\x1B[31m", // Rojo
+            "\x1B[32m", // Verde
+            "\x1B[33m", // Amarillo
+            "\x1B[34m", // Azul
+            "\x1B[35m", // Magenta
+            "\x1B[36m", // Cian
+            "\x1B[37m", // Blanco
+            "\x1B[91m", // Rojo claro
+            "\x1B[92m"  // Verde claro
     };
     const char *reset_color = "\x1B[0m";
 
     for (int i = 0; i < board->hight; i++) {
         printf("|");
         for (int j = 0; j < board->width; j++) {
-            if(board->board_pointer[i * board->width + j] <=0){
-                printf(" %s❒%s |", colors[((-1)*board->board_pointer[i * board->width + j])], reset_color);
-            }  else{
-                printf(" %d |", board->board_pointer[i * board->width + j]);
+            bool is_head = false;
+            for (int k = 0; k < board->num_players; k++) {
+                if (board->player_list[k].coord_x == j && board->player_list[k].coord_y == i) {
+                    printf(" %sΩ%s |", colors[k % 9], reset_color); // Cabeza de la serpiente
+                    is_head = true;
+                    break;
+                }
+            }
+            if (!is_head) {
+                if (board->board_pointer[i * board->width + j] <= 0) {
+                    printf(" %s❒%s |", colors[(-1) * board->board_pointer[i * board->width + j]], reset_color);
+                } else {
+                    printf(" %d |", board->board_pointer[i * board->width + j]);
+                }
             }
         }
         printf("\n");
     }
     printf("\n");
 }
-
+// Ϟ ❒
 void print_players(Board * board) {
     printf("Players:\n");
     for (int i = 0; i < board->num_players; i++) {
@@ -82,6 +92,7 @@ int main(int argc, char * argv[]) {
     
     
     while (!board->has_ended){
+
         sem_wait(&(sync->changes));
 
         // Imprimir el estado del juego

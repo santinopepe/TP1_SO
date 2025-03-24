@@ -67,9 +67,7 @@ int main(int argc, char * argv[]){
           sem_wait(&sync->game_state_mutex);
       }
       sem_post(&sync->variable_mutex);
-      
-       
-      
+
       // Decrementar readers_count
       sem_wait(&sync->variable_mutex);
       sync->readers_count--;
@@ -87,9 +85,6 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
       }      
       
-    // Indicar al máster que hay una solicitud de movimiento pendiente
-      sem_post(&sync->changes);
-
       usleep(100000);
     
     } 
