@@ -61,7 +61,7 @@ int main(int argc, char * argv[]){
     
     while (board->player_list[player_number].is_bolcked == false){
       // Incrementar readers_count
-      sem_wait(&sync->variable_mutex);
+      sem_wait(&sync->variable_mutex); 
       sync->readers_count++;
       if (sync->readers_count == 1) {
           sem_wait(&sync->game_state_mutex);
@@ -84,9 +84,14 @@ int main(int argc, char * argv[]){
         perror("write");
         exit(EXIT_FAILURE);
       }      
-      
+  
       usleep(100000);
+  }     
     
-    } 
-    return move;
+     // Cleanup
+     munmap(board, sizeof(Board));
+     munmap(sync, sizeof(Sinchronization));
+     shm_unlink(SHM_NAME_BOARD);
+     shm_unlink(SHM_NAME_SYNC);
+    return 0;
 }

@@ -59,19 +59,4 @@ void create_sem(sem_t * sem, int value);
 void initialize_board(Board * board);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #endif //TP_CHOMP_CHAMP_UTILIS_H

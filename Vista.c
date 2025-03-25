@@ -24,11 +24,8 @@ void * create_shm(char * name, int size, int flags){
   
     return ptr;
   }
-
-void print_board(Board * board) {
-    printf("Board state:\n");
-    // Colores ANSI
-    const char *colors[] = {
+  
+const char *colors[] = {
             "\x1B[31m", // Rojo
             "\x1B[32m", // Verde
             "\x1B[33m", // Amarillo
@@ -39,8 +36,10 @@ void print_board(Board * board) {
             "\x1B[91m", // Rojo claro
             "\x1B[92m"  // Verde claro
     };
-    const char *reset_color = "\x1B[0m";
+const char *reset_color = "\x1B[0m";
 
+void print_board(Board * board) {
+    printf("Board state:\n");
     for (int i = 0; i < board->hight; i++) {
         printf("|");
         for (int j = 0; j < board->width; j++) {
@@ -69,8 +68,8 @@ void print_players(Board * board) {
     printf("Players:\n");
     for (int i = 0; i < board->num_players; i++) {
         Player * player = &board->player_list[i];
-        printf("Name: %s, Points: %u, Illegal Moves: %u, Valid Moves: %u, Position: (%u, %u), Can Move: %s\n",
-               player->name, player->points, player->iligal_moves, player->valid_moves,
+        printf("Name: %s%s%s, Points: %u, Illegal Moves: %u, Valid Moves: %u, Position: (%u, %u), Can Move: %s\n",
+            colors[i % 9],player->name, reset_color, player->points, player->iligal_moves, player->valid_moves,
                player->coord_x, player->coord_y, player->is_bolcked ? "No" : "Yes");
     }
     printf("\n");
@@ -103,7 +102,11 @@ int main(int argc, char * argv[]) {
         sem_post(&(sync->view_done));
         
     }
-    
+     // Cleanup
+     munmap(board, sizeof(Board));
+     munmap(sync, sizeof(Sinchronization));
+     shm_unlink(SHM_NAME_BOARD);
+     shm_unlink(SHM_NAME_SYNC);
     return 0;
 }
 
