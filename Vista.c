@@ -86,7 +86,7 @@ int main(int argc, char * argv[]) {
 
 
     // Conectar a las memorias compartidas
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board)+ sizeof(int)*width*height, O_RDONLY);
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
     
     
@@ -103,10 +103,13 @@ int main(int argc, char * argv[]) {
         
     }
      // Cleanup
-     munmap(board, sizeof(Board));
-     munmap(sync, sizeof(Sinchronization));
-     shm_unlink(SHM_NAME_BOARD);
-     shm_unlink(SHM_NAME_SYNC);
+    if (munmap(board, sizeof(Board)+ sizeof(int)*width*height) == -1) {
+        perror("munmap");
+    }
+    if (munmap(sync, sizeof(Sinchronization)) == -1) {
+        perror("munmap");
+    }
+     
     return 0;
 }
 

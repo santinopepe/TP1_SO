@@ -59,14 +59,17 @@ int main(int argc, char * argv[]){
     srand(time(NULL));
     
     
-    while (board->player_list[player_number].is_bolcked == false){
-      // Incrementar readers_count
+    while (!board->player_list[player_number].is_bolcked){
+    // Incrementar readers_count
       sem_wait(&sync->variable_mutex); 
       sync->readers_count++;
       if (sync->readers_count == 1) {
           sem_wait(&sync->game_state_mutex);
       }
       sem_post(&sync->variable_mutex);
+
+      // Enviar solicitud de movimiento al máster
+      move = rand() % 8;
 
       // Decrementar readers_count
       sem_wait(&sync->variable_mutex);
@@ -76,8 +79,7 @@ int main(int argc, char * argv[]){
       }
       sem_post(&sync->variable_mutex);
 
-      // Enviar solicitud de movimiento al máster
-      move = rand() % 8; 
+      
       
       // Escribir el movimiento en el pipe
       if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
@@ -85,13 +87,15 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
       }      
   
-      usleep(100000);
+      usleep(200000);
   }     
     
-     // Cleanup
-     munmap(board, sizeof(Board));
-     munmap(sync, sizeof(Sinchronization));
-     shm_unlink(SHM_NAME_BOARD);
-     shm_unlink(SHM_NAME_SYNC);
+  // Cleanup
+  if (munmap(board, sizeof(Board) + sizeof(int)*width*height) == -1) {
+      perror("munmap");
+  }
+  if (munmap(sync, sizeof(Sinchronization)) == -1) {
+      perror("munmap");
+  }
     return 0;
 }
