@@ -32,15 +32,15 @@ const char *colors[] = {
             "\x1B[34m", // Azul
             "\x1B[35m", // Magenta
             "\x1B[36m", // Cian
-            "\x1B[37m", // Blanco
-            "\x1B[91m", // Rojo claro
-            "\x1B[92m"  // Verde claro
+            "\x1B[95m", //Magenta brillante
+            "\x1B[96m", //Cyan brillante
+            "\x1B[93m" //Amarillo brillante
     };
 const char *reset_color = "\x1B[0m";
 
 void print_board(Board * board) {
     printf("Board state:\n");
-    for (int i = 0; i < board->hight; i++) {
+    for (int i = 0; i < board->height; i++) {
         printf("|");
         for (int j = 0; j < board->width; j++) {
             bool is_head = false;
@@ -70,7 +70,7 @@ void print_players(Board * board) {
         Player * player = &board->player_list[i];
         printf("Name: %s%s%s, Points: %u, Illegal Moves: %u, Valid Moves: %u, Position: (%u, %u), Can Move: %s\n",
             colors[i % 9],player->name, reset_color, player->points, player->iligal_moves, player->valid_moves,
-               player->coord_x, player->coord_y, player->is_bolcked ? "No" : "Yes");
+               player->coord_x, player->coord_y, player->is_blocked ? "No" : "Yes");
     }
     printf("\n");
 }

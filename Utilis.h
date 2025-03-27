@@ -28,12 +28,12 @@ typedef struct {
     unsigned int valid_moves; // Cantidad de solicitudes de movimientos válidas realizadas
     unsigned short coord_x, coord_y; // Coordenadas x e y en el tablero
     pid_t pid; // Identificador de proceso
-    bool is_bolcked; // Indica si el jugador tiene movimientos válidos disponibles
+    bool is_blocked; // Indica si el jugador tiene movimientos válidos disponibles
 } Player;
 
 typedef struct {
     unsigned short width; // Ancho del tablero
-    unsigned short hight; // Alto del tablero
+    unsigned short height; // Alto del tablero
     unsigned int num_players; // Cantidad de jugadores
     Player player_list[9]; // Lista de jugadores
     bool has_ended; // Indica si el juego se ha terminado
