@@ -69,7 +69,7 @@ void print_players(Board * board) {
     for (int i = 0; i < board->num_players; i++) {
         Player * player = &board->player_list[i];
         printf("Name: %s%s%s, Points: %u, Illegal Moves: %u, Valid Moves: %u, Position: (%u, %u), Can Move: %s\n",
-            colors[i % 9],player->name, reset_color, player->points, player->iligal_moves, player->valid_moves,
+            colors[i % 9],player->name, reset_color, player->points, player->ilegal_moves, player->valid_moves,
                player->coord_x, player->coord_y, player->is_blocked ? "No" : "Yes");
     }
     printf("\n");

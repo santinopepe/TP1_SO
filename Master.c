@@ -1,8 +1,24 @@
 #include "Utilis.h"
+#include <stdio.h> 
 
-
+#define WIDTH_ERROR -1
+#define HEIGHT_ERROR -1
 #define PI 3.14159265358979323846
 
+#define CAN_MOVE(x,y,width,height,new_pos)  (((x) >= 0 && (x) < (width)) && ((y) >= 0 && (y) < (height)) && ((new_pos) > 0))
+
+#define DIRECTIONS 8 // Cantidad de direcciones posibles
+
+const int movement[8][2] = {
+    {0, -1},  // Arriba
+    {1, -1},  // Arriba-Derecha
+    {1, 0},   // Derecha
+    {1, 1},    // Abajo-Derecha
+    {0, 1},   // Abajo
+    {-1, 1},  // Abajo-Izquierda
+    {-1, 0},  // Izquierda
+    {-1, -1}, // Arriba-Izquierda
+};
 
 
 void * create_shm(char * name, int size, int flags){
@@ -28,49 +44,23 @@ void * create_shm(char * name, int size, int flags){
 }
 
 
-bool can_move(int x, int y, int width, int height, Board *board){
-    return x >= 0 && x < width && y >= 0 && y < height && board->board_pointer[y * width + x] != -1;
-  }
+
   
-  int is_valid_move(Board *board, Player *player, int move, int width, int height){ 
+bool is_valid_move(Board *board, Player *player, int move, int width, int height){ 
     int x = player->coord_x;
     int y = player->coord_y;
   
-    int movement[8][2] ={
-      {0, 1},
-      {1, 0},
-      {0, -1},
-      {-1, 0},
-      {1, 1},
-      {1, -1},
-      {-1, 1},
-      {-1, -1}
-    };
-  
+    
     x += movement[move][0];
     y += movement[move][1];
   
-    if(!can_move(x, y, width, height, board)){
-      int i =0;
-      while (i < 8) //si no es posibe con el numero random encontrar un mov valido lo hace a la fuerza
-      {
-        if(player->coord_x + movement[i][0] >= 0 && player->coord_x + movement[i][0] < width && player->coord_y + movement[i][1] >= 0 && player->coord_y + movement[i][1] < height && board->board_pointer[(player->coord_y + movement[i][1]) * width + player->coord_x + movement[i][0]] != -1){
-          x = player->coord_x + movement[i][0];
-          y = player->coord_y + movement[i][1];
-          break;
-        }
-        i++;
-      }
-      if (i == 8)
-      {
-        player->is_blocked = true; //NO SE SI ES QUE ESTO SE MODIFICA ACA O SE HACE SOLO EN EL MASTER
-        return -1;
-      }
+
+    if(!CAN_MOVE(x,y,width,height,board->board_pointer[y * width + x])){
+        return false;
     }
-    player->coord_x = x; //NO SE SI ES QUE SE MODIFICA ACA O DONDE SE HACE
-    player->coord_y = y;
-    return 0;
-  }
+
+    return true;
+}
   
 
 void create_sem(sem_t * sem, int value){
@@ -100,8 +90,16 @@ int get_param(int argc, char * argv[], int param_array[], char * player_array[],
     {
         if(strcmp(argv[i], "-w") == 0){
             param_array[0] = atoi(argv[i+1]);
+            if(param_array[0] < 10){
+                fprintf(stderr,"Ancho inv");
+                exit(WIDTH_ERROR);
+            }
         } else if (strcmp(argv[i], "-h") == 0){
             param_array[1] = atoi(argv[i+1]);
+            if(param_array[1] < 10 ){
+                fprintf(stderr,"Alto invalido \n");
+                exit(HEIGHT_ERROR);
+            }
         } else if (strcmp(argv[i], "-d") == 0){
             param_array[2] = atoi(argv[i+1]);
         } else if (strcmp(argv[i], "-t") == 0){
@@ -118,12 +116,15 @@ int get_param(int argc, char * argv[], int param_array[], char * player_array[],
                     break;
                 }
             }
+            if (num_players > MAX_PLAYERS || num_players < 1){
+                fprintf(stderr, "Cantidad de jugadores invalida \n");
+                exit(EXIT_FAILURE);
+            }
+            
+            
         }     
     }
-    if(num_players == 0){
-        printf("No se ingresaron jugadores\n");
-        exit(EXIT_FAILURE);
-    }
+  
     return num_players;
 }
 
@@ -175,7 +176,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
         
         strcpy(board->player_list[player_it].name, player_array[player_it]);
         board->player_list[player_it].points = 0;
-        board->player_list[player_it].iligal_moves = 0;
+        board->player_list[player_it].ilegal_moves = 0;
         board->player_list[player_it].valid_moves = 0;
         board->player_list[player_it].coord_x = points[player_it].x;
         board->player_list[player_it].coord_y = points[player_it].y;
@@ -221,6 +222,38 @@ void initialize_sync(Sinchronization * sync, int num_players){
     sync->readers_count = num_players;
 }
 
+void check_can_move(Board * board, Player * player, int width, int height){
+    int x = player->coord_x;
+    int y = player->coord_y;
+    for (int i = 0; i < 8; i++){
+        if (CAN_MOVE(x + movement[i][0], y + movement[i][1], width, height, board->board_pointer[(y + movement[i][1]) * width + (x + movement[i][0])])){
+            return;
+        }
+    }
+    player->is_blocked = true;
+    
+}
+
+void print_game_vals(int param_array[], char * player_array[], int num_players){
+    printf("width: %d\n", param_array[0]); 
+    printf("height: %d\n", param_array[1]);
+    printf("delay: %d",param_array[2]);
+    printf("timeout: %d",param_array[3]); 
+    printf("seed: %d\n", param_array[4]);
+    printf("num_players: %d\n", num_players); 
+    for (int i = 0; i < num_players; i++){
+        printf("Player %d: %s\n", i+1, player_array[i]);
+    }
+}
+
+void move_player(Board * board, Player * player, int move, int width, int player_number){  
+    player->coord_x += movement[move][0];
+    player->coord_y += movement[move][1];
+    player->points += board->board_pointer[player->coord_y * width + player->coord_x];
+    board->board_pointer[player->coord_y * width + player->coord_x] = (-1)*player_number;
+    player->valid_moves++;
+}
+
 
 int main(int argc, char * argv[]) {
     int param_array[5] ={10, 10, 200, 10, time(NULL)}; 
@@ -237,11 +270,18 @@ int main(int argc, char * argv[]) {
     initialize_sync(sync, num_players);
     initialize_board(board);
 
+
+    print_game_vals(param_array,player_array,board->num_players);
+
+
+    //Creamos pipes de los players 
     for (int i = 0; i < num_players; i++){
+        
         if (pipe(pipe_fd[i]) == -1){
             perror("pipe");
             exit(EXIT_FAILURE);
         }
+
     }
 
 
@@ -253,10 +293,17 @@ int main(int argc, char * argv[]) {
         for (int i = 0; i < num_players; i++) {
             close(pipe_fd[i][1]); // Cerrar el descriptor de escritura en el proceso principal
             read(pipe_fd[i][0], &move, sizeof(unsigned char));
-            if (is_valid_move(board, &board->player_list[i], move, board->width, board->height) == -1){ 
-                board->player_list[i].iligal_moves++;//HAY QUE CAMBIAR LA FUCION
+            if (!is_valid_move(board, &board->player_list[i], move, board->width, board->height)){ 
+                board->player_list[i].ilegal_moves++;
+                check_can_move(board, &board->player_list[i], board->width, board->height);
+                
+                if (board->player_list[i].is_blocked){
+                    board->has_ended = true;
+                    break;
+                }
+                
             } else{
-                board->player_list[i].valid_moves++;
+                move_player(board, &board->player_list[i], move, board->width, i);
             }
         }
     }
@@ -275,6 +322,8 @@ int main(int argc, char * argv[]) {
      
     return 0;
 }
+
+
 /*
 //Falta : 
 +crear pipes (CREO QUE ESTA HECHO PERO NO SE)
