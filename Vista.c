@@ -86,7 +86,7 @@ int main(int argc, char * argv[]) {
 
 
     // Conectar a las memorias compartidas
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board)+ sizeof(int)*width*height, O_RDONLY);
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*width*height, O_RDONLY);
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
     
     

@@ -26,60 +26,6 @@ void * create_shm(char * name, int size, int flags){
   return ptr;
 }
 
-int find_best_path(Board *board, Player *player) {
-    // Direcciones posibles: {dx, dy}
-    int directions[8][2] = {
-        {0, -1},  // Arriba
-        {1, -1},  // Arriba-Derecha
-        {1, 0},   // Derecha
-        {1, 1},    // Abajo-Derecha
-        {0, 1},   // Abajo
-        {-1, 1},  // Abajo-Izquierda
-        {-1, 0},  // Izquierda
-        {-1, -1}, // Arriba-Izquierda
-    };
-
-    int max_points, best_move, new_x, new_y;
-
-    int width = board->width;
-    int height = board->hight;
-
-    int player_x = player->coord_x;
-    int player_y = player->coord_y;
-
-    max_points = -1;
-    best_move = -1;
-
-        for (unsigned char i = 0; i < 8; i++) {
-            new_x = player_x + directions[i][0];
-            new_y = player_y + directions[i][1];
-
-            // Verificar si la nueva posición está dentro de los límites del tablero
-            if (new_x >= 0 && new_x < width && new_y >= 0 && new_y < height) {
-                // Calcular el índice de la celda en el arreglo unidimensional
-                int cell_index = (new_y * width) + new_x;
-
-                if (cell_index < 0 || cell_index >= width * height) {
-                    fprintf(stderr, "Error: cell_index fuera de los límites (%d)\n", cell_index);
-                    continue;  // Saltar este movimiento
-                }
-                
-                // Obtener los puntos de la celda
-                int points = board->board_pointer[cell_index];
-                
-                // Actualizar el mejor movimiento si se encuentra una celda con más puntos
-                if (points > max_points) {
-                    max_points = points;
-                    best_move = i;
-                }
-            }
-        }
-    
-
-    // Retornar los puntos totales acumulados
-    return best_move;
-}
-
 
 int main(int argc, char * argv[]){
     unsigned char move;
@@ -113,31 +59,29 @@ int main(int argc, char * argv[]){
     srand(time(NULL));
     
     
-    while (!board->player_list[player_number].is_bolcked){
+    while (!board->player_list[player_number].is_blocked){
     // Incrementar readers_count
-      /*sem_wait(&sync->variable_mutex); 
+      sem_wait(&sync->variable_mutex);
       sync->readers_count++;
       if (sync->readers_count == 1) {
           sem_wait(&sync->game_state_mutex);
       }
-      sem_post(&sync->variable_mutex); */
+      sem_post(&sync->variable_mutex);
 
       // Enviar solicitud de movimiento al máster
-      //move = rand() % 8;
+      move = rand() % 8;
 
-      //sem_wait(&sync->game_state_mutex);
+      sem_wait(&sync->game_state_mutex);
 
-      move = find_best_path(board, &board->player_list[player_number]);
+      sem_post(&sync->game_state_mutex);
 
-      //sem_post(&sync->game_state_mutex);
-
-      // Decrementar readers_count
-      /*sem_wait(&sync->variable_mutex);
+      //Decrementar readers_count
+      sem_wait(&sync->variable_mutex);
       sync->readers_count--;
       if (sync->readers_count == 0) {
           sem_post(&sync->game_state_mutex);
       }
-      sem_post(&sync->variable_mutex);*/
+      sem_post(&sync->variable_mutex);
 
       
       
