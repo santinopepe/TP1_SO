@@ -63,7 +63,7 @@ bool can_move(int x, int y, int width, int height, Board *board){
       }
       if (i == 8)
       {
-        player->is_bolcked = true; //NO SE SI ES QUE ESTO SE MODIFICA ACA O SE HACE SOLO EN EL MASTER
+        player->is_blocked = true; //NO SE SI ES QUE ESTO SE MODIFICA ACA O SE HACE SOLO EN EL MASTER
         return -1;
       }
     }
@@ -82,7 +82,7 @@ void create_sem(sem_t * sem, int value){
 
 void initialize_board(Board * board){
     board->width = 10;
-    board->hight = 10;
+    board->height = 10;
     board->num_players = 0;
     board->has_ended = false;
 }
@@ -159,16 +159,16 @@ Point* generate_circle(int n, int m, int num_points) {
 
 void initialize_game(int param_array[], char * player_array[], char * view, Board * board, int num_players, int write_fd){
     board->width = param_array[0];
-    board->hight = param_array[1];
+    board->height = param_array[1];
     board->num_players = num_players;
     board->has_ended = false;
     srand(time(NULL));
     // Memory for board_pointer is already allocated with the Board structure
-    for (int i = 0; i < board->width * board->hight; i++) {
+    for (int i = 0; i < board->width * board->height; i++) {
         board->board_pointer[i] = rand() % 9 + 1; // Initialize board cells to 0
     }
 
-    Point * points = generate_circle(board->width, board->hight, num_players);
+    Point * points = generate_circle(board->width, board->height, num_players);
 
     int player_it = 0;
     while(player_it < num_players || player_array[player_it]==NULL){
@@ -179,7 +179,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
         board->player_list[player_it].valid_moves = 0;
         board->player_list[player_it].coord_x = points[player_it].x;
         board->player_list[player_it].coord_y = points[player_it].y;
-        board->player_list[player_it].is_bolcked = true;
+        board->player_list[player_it].is_blocked = true;
 
         board->player_list[player_it].pid = fork(); //CHECKEAR SI ESTO ESTA BIEN
         if (board->player_list[player_it].pid == -1){
@@ -188,7 +188,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
         } else if (board->player_list[player_it].pid == 0){
             dup2(write_fd, STDOUT_FILENO);
             close(write_fd);
-            execve(player_array[player_it], board->width, board->hight);
+            execve(player_array[player_it], board->width, board->height);
             perror("execve");
             exit(EXIT_FAILURE);
         }
@@ -204,7 +204,7 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
             perror("fork");
             exit(EXIT_FAILURE);
         } else if (pid == 0){
-            execve(view, board->width, board->hight);
+            execve(view, board->width, board->height);
             perror("execve");
             exit(EXIT_FAILURE);
         }
@@ -228,7 +228,7 @@ int main(int argc, char * argv[]) {
     char * player_array[9]={NULL};
     int pipe_fd[MAX_PLAYERS][2]; //Array de pipes
 
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*board->width*board->hight, O_CREAT);
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*board->width*board->height, O_CREAT);
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_CREAT);
     
 
@@ -253,7 +253,7 @@ int main(int argc, char * argv[]) {
         for (int i = 0; i < num_players; i++) {
             close(pipe_fd[i][1]); // Cerrar el descriptor de escritura en el proceso principal
             read(pipe_fd[i][0], &move, sizeof(unsigned char));
-            if (is_valid_move(board, &board->player_list[i], move, board->width, board->hight) == -1){ 
+            if (is_valid_move(board, &board->player_list[i], move, board->width, board->height) == -1){ 
                 board->player_list[i].iligal_moves++;//HAY QUE CAMBIAR LA FUCION
             } else{
                 board->player_list[i].valid_moves++;

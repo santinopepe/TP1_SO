@@ -81,8 +81,8 @@ int main(int argc, char * argv[]) {
         return 1;
     }
 
-    int width = toNum(argv[1]);
-    int height = toNum(argv[2]);
+    int width = atoi(argv[1]);
+    int height = atoi(argv[2]);
 
 
     // Conectar a las memorias compartidas
@@ -111,13 +111,4 @@ int main(int argc, char * argv[]) {
     }
      
     return 0;
-}
-
-
-int toNum(char * str){
-    int num = 0;
-    for(int i = 0; str[i] != '\0'; i++){
-        num = num * 10 + str[i] - '0';
-    }
-    return num;
 }
