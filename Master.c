@@ -5,7 +5,7 @@
 
 
 
-void * create_shm(char * name, int size){
+void * create_shm(char * name, int size, int flags){
 
     int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
@@ -114,6 +114,8 @@ int get_param(int argc, char * argv[], int param_array[], char * player_array[],
             for (; num_players < MAX_PLAYERS || i < argc; num_players++, i++){
                 if (check_is_player(argv[i+num_players+1])){ 
                     player_array[num_players] = argv[i+num_players+1];
+                } else{
+                    break;
                 }
             }
         }     
@@ -155,10 +157,16 @@ Point* generate_circle(int n, int m, int num_points) {
     return points;
 }
 
-void initialize_game(int param_array[], char * player_array[], char * view, Board * board, int num_players){
+void initialize_game(int param_array[], char * player_array[], char * view, Board * board, int num_players, int write_fd){
     board->width = param_array[0];
     board->hight = param_array[1];
     board->num_players = num_players;
+    board->has_ended = false;
+    srand(time(NULL));
+    // Memory for board_pointer is already allocated with the Board structure
+    for (int i = 0; i < board->width * board->hight; i++) {
+        board->board_pointer[i] = rand() % 9 + 1; // Initialize board cells to 0
+    }
 
     Point * points = generate_circle(board->width, board->hight, num_players);
 
@@ -178,23 +186,30 @@ void initialize_game(int param_array[], char * player_array[], char * view, Boar
             perror("fork");
             exit(EXIT_FAILURE);
         } else if (board->player_list[player_it].pid == 0){
-            execve(player_array[player_it], NULL, NULL);
+            dup2(write_fd, STDOUT_FILENO);
+            close(write_fd);
+            execve(player_array[player_it], board->width, board->hight);
+            perror("execve");
+            exit(EXIT_FAILURE);
         }
 
         player_it++;
     }
 
-    board->has_ended = false;
-
-    srand(time(NULL));
-    // Memory for board_pointer is already allocated with the Board structure
-    for (int i = 0; i < board->width * board->hight; i++) {
-        board->board_pointer[i] = rand() % 9 + 1; // Initialize board cells to 0
-    }
-
     free(points);
 
-    
+    if (view != NULL){
+        pid_t pid = fork();
+        if (pid == -1){
+            perror("fork");
+            exit(EXIT_FAILURE);
+        } else if (pid == 0){
+            execve(view, board->width, board->hight);
+            perror("execve");
+            exit(EXIT_FAILURE);
+        }
+    }
+
 }
 
 void initialize_sync(Sinchronization * sync, int num_players){
@@ -206,24 +221,65 @@ void initialize_sync(Sinchronization * sync, int num_players){
     sync->readers_count = num_players;
 }
 
+
 int main(int argc, char * argv[]) {
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board));
-    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization));
-    
     int param_array[5] ={10, 10, 200, 10, time(NULL)}; 
     char * view = NULL;
     char * player_array[9]={NULL};
+    int pipe_fd[MAX_PLAYERS][2]; //Array de pipes
+
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*board->width*board->hight, O_CREAT);
+    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_CREAT);
+    
 
     int num_players = get_param(argc, argv, param_array, player_array, view);
 
-    initialize_game(param_array, player_array, view, board, num_players);
-    
     initialize_sync(sync, num_players);
+    initialize_board(board);
+
+    for (int i = 0; i < num_players; i++){
+        if (pipe(pipe_fd[i]) == -1){
+            perror("pipe");
+            exit(EXIT_FAILURE);
+        }
+    }
 
 
+    initialize_game(param_array, player_array, view, board, num_players, pipe_fd[1]);
+
+     // Leer desde los pipes
+    unsigned char move;
+    while(!board->has_ended){
+        for (int i = 0; i < num_players; i++) {
+            close(pipe_fd[i][1]); // Cerrar el descriptor de escritura en el proceso principal
+            read(pipe_fd[i][0], &move, sizeof(unsigned char));
+            if (is_valid_move(board, &board->player_list[i], move, board->width, board->hight) == -1){ 
+                board->player_list[i].iligal_moves++;//HAY QUE CAMBIAR LA FUCION
+            } else{
+                board->player_list[i].valid_moves++;
+            }
+        }
+    }
 
 
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+        close(pipe_fd[i][0]); // Cerrar el descriptor de lectura después de leer
+        close(pipe_fd[i][1]); // Cerrar el descriptor de lectura después de leer
 
+        waitpid(board->player_list[i].pid, NULL, 0); //CHEQUEAR SI ESTO VA ACA O ARRIBA DE LOS CLOSE
+    }
+
+
+    
+     
     return 0;
-
 }
+/*
+//Falta : 
++crear pipes (CREO QUE ESTA HECHO PERO NO SE)
++chequear si la movida que quiere hacer el player es valida, 
++validar los parametros que le entran cuando llamas al ejecutable
++todo el uso de semaforos
+
+*/
