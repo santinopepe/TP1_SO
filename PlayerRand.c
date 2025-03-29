@@ -71,10 +71,6 @@ int main(int argc, char * argv[]){
       // Enviar solicitud de movimiento al máster
       move = rand() % 8;
 
-      sem_wait(&sync->game_state_mutex);
-
-      sem_post(&sync->game_state_mutex);
-
       //Decrementar readers_count
       sem_wait(&sync->variable_mutex);
       sync->readers_count--;
@@ -91,7 +87,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
       }      
   
-      usleep(2000000);
+      usleep(20000);
   }     
     
   // Cleanup

@@ -1,0 +1,15 @@
+# Ignorar ejecutables
+*.exe
+*.out
+*.o
+
+ChompChamps-amd64
+ChompChamps-arm64
+
+player
+playerI
+view
+
+# Ignorar archivos de texto
+*.txt
+
