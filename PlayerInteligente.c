@@ -114,8 +114,6 @@ int main(int argc, char * argv[]){
     }
 
 
-   
-
     while (!board->player_list[player_number].is_blocked){
 
         sem_wait(&sync->variable_mutex);
@@ -124,13 +122,14 @@ int main(int argc, char * argv[]){
         if (sync->readers_count == 1) {
             sem_wait(&sync->master_mutex);  // Primer lector bloquea al master
         }
-        
         sem_post(&sync->variable_mutex);
 
 
 
         sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
+
         move = find_best_path(board, &board->player_list[player_number]);
+
         sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
 
         if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
