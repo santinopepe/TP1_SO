@@ -4,6 +4,7 @@
 
 
 
+
 void * create_shm(char * name, int size, int flags){
 
     int fd = shm_open(name, flags, 0666);
@@ -64,7 +65,6 @@ int find_best_path(Board *board, Player *player) {
                 continue;  // Saltar este movimiento
             }
 
-            // Obtener los puntos de la celda
             int points = board->board_pointer[cell_index];
 
             // Actualizar el mejor movimiento si se encuentra una celda con más puntos
@@ -84,6 +84,10 @@ int find_best_path(Board *board, Player *player) {
 int main(int argc, char * argv[]){
     unsigned char move;
 
+
+    
+
+
     if (argc != 3) {
         fprintf(stderr, "Usage: %s <width> <height>\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -100,7 +104,7 @@ int main(int argc, char * argv[]){
 
     //veo que proceso es el que esta corriendo
     pid_t pid = getpid();
-    int player_number =0;
+    int player_number = 0;
     while (player_number < board->num_players)
     {
         if(board->player_list[player_number].pid == pid){
@@ -110,23 +114,41 @@ int main(int argc, char * argv[]){
     }
 
 
-    srand(time(NULL));
-
+   
 
     while (!board->player_list[player_number].is_blocked){
 
-        move = find_best_path(board, &board->player_list[player_number]);
+        sem_wait(&sync->variable_mutex);
 
-        // Escribir el movimiento en el pipe
+        sync->readers_count++;
+        if (sync->readers_count == 1) {
+            sem_wait(&sync->master_mutex);  // Primer lector bloquea al master
+        }
+        
+        sem_post(&sync->variable_mutex);
+
+
+
+        sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
+        move = find_best_path(board, &board->player_list[player_number]);
+        sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
+
         if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
             perror("write");
             exit(EXIT_FAILURE);
         }
 
+        sem_wait(&sync->variable_mutex);
+        sync->readers_count--;
+        if (sync->readers_count == 0) {
+            sem_post(&sync->master_mutex);  // Último lector desbloquea al master
+        }
+        sem_post(&sync->variable_mutex);
+
         usleep(2000000);
+
     }
 
-    // Cleanup
     if (munmap(board, sizeof(Board) + sizeof(int)*width*height) == -1) {
         perror("munmap");
     }

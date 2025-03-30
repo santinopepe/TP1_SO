@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -lm -std=c99 -pedantic 
 
-all: view player playerI
+all: view player playerI 
 
 view: Vista.c
 	$(CC) $(CFLAGS) Vista.c -o view
