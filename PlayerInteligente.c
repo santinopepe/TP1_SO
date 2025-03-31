@@ -84,10 +84,6 @@ int find_best_path(Board *board, Player *player) {
 int main(int argc, char * argv[]){
     unsigned char move;
 
-
-    
-
-
     if (argc != 3) {
         fprintf(stderr, "Usage: %s <width> <height>\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -115,7 +111,6 @@ int main(int argc, char * argv[]){
 
 
     while (!board->player_list[player_number].is_blocked){
-
         sem_wait(&sync->variable_mutex);
 
         sync->readers_count++;

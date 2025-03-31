@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <sys/wait.h>
 
 
 /*---------------------------------------------------------------------Defines----------------------------------------------------------------------------------------------------------*/
@@ -101,7 +102,7 @@ void create_sem(sem_t * sem, int value);
  * @param view The view.
  * @param write_fd Matrix with the file descriptors.
 */
-void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
+pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
 
 /**
  * @brief Generate the random values on the board. Used in initialize_game.
@@ -109,7 +110,7 @@ void initialize_game(Board * board, int param_array[], char * player_array[], in
  * @param width The width of the board.
  * @param height The height of the board.
 */
-void generate_board(int * board_pointer, int width, int height); 
+void generate_board(int * board_pointer, int width, int height, int seed); 
 
 
 
@@ -172,7 +173,7 @@ int main(int argc, char *argv[]) {
     int param_array[5] = {10, 10, 200, 10, time(NULL)};
     char *player_array[9] = {NULL};
     char *view = NULL;
-    int pipe_fd[MAX_PLAYERS][2] = {{0,0}}; 
+    int pipe_fd[MAX_PLAYERS][2]; 
 
     int num_players = set_params(argc, argv, param_array, player_array, &view);
 
@@ -192,7 +193,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
+    pid_t view_pid = initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
 
 
 
@@ -200,24 +201,27 @@ int main(int argc, char *argv[]) {
     unsigned char move;
     int blocked_players = 0;
     int ready; 
-    int max_fd = 0;
+    
     struct timeval timeout;
 
     while(!board->has_ended){
         FD_ZERO(&read_fds);
-
+        int max_fd = 0;
         for (int i = 0; i < num_players; i++){
-            FD_SET(pipe_fd[i][0], &read_fds);
-            if (pipe_fd[i][0] > max_fd){
-                max_fd = pipe_fd[i][0];
+
+            if (pipe_fd[i][0] >= 0) {
+                FD_SET(pipe_fd[i][0], &read_fds);
+                if (pipe_fd[i][0] > max_fd) {
+                    max_fd = pipe_fd[i][0];
+                }
+            } else {
+                printf("Invalid file descriptor for player %d\n", i);
             }
         }
 
         timeout.tv_sec = param_array[3];
         timeout.tv_usec = 0;
-
         ready = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
-
         if (ready == -1){
             perror("select");
             exit(EXIT_FAILURE);
@@ -229,8 +233,15 @@ int main(int argc, char *argv[]) {
         
          for(int i = 0; i < num_players; i++){
             if (FD_ISSET(pipe_fd[i][0], &read_fds)){
-                read(pipe_fd[i][0], &move, sizeof(unsigned char));
-
+                sem_wait(&sync->game_state_mutex);
+                int bytes_read = read(pipe_fd[i][0], &move, sizeof(unsigned char));
+                sem_post(&sync->game_state_mutex);
+                if (bytes_read > 0) {
+                    printf("Player %d sent move: %d\n", i, move);
+                    // Procesar el movimiento...
+                } else {
+                    perror("read");
+                }
                 if (!is_valid_move(board, &board->player_list[i], move, board->width, board->height)){ 
                     
                     board->player_list[i].ilegal_moves++;
@@ -243,18 +254,12 @@ int main(int argc, char *argv[]) {
                     move_player(board, &board->player_list[i], move, board->width, i);
                     sem_post(&sync->master_mutex);
 
-
                 }
 
                 if (blocked_players == num_players){ 
                     board->has_ended = true;
                     break;
                 }
-
-
-                sem_post(&sync->game_state_mutex); //Aviso que termine de leer el board.
-                sem_post(&sync->master_mutex); //Aviso que termine de leer el board.
-
             }
         }
 
@@ -262,6 +267,8 @@ int main(int argc, char *argv[]) {
         sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
 
         sem_wait(&sync->view_done); //Espero a que la vista termine de imprimir el board. 
+
+        usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
         
 
     }
@@ -271,7 +278,7 @@ int main(int argc, char *argv[]) {
 
 
 
-     for (int i = 0; i < MAX_PLAYERS; i++)
+     for (int i = 0; i < num_players; i++)
     {
         waitpid(board->player_list[i].pid, NULL, 0);
 
@@ -279,8 +286,21 @@ int main(int argc, char *argv[]) {
         close(pipe_fd[i][1]); // Cerrar el descriptor de lectura después de leer
 
     }
+    if(view != NULL){
+        waitpid(view_pid, NULL, 0);
+    }
 
-    
+    sem_destroy(&sync->changes);
+    sem_destroy(&sync->view_done);
+    sem_destroy(&sync->master_mutex);
+    sem_destroy(&sync->game_state_mutex);
+    sem_destroy(&sync->variable_mutex);
+
+    munmap(board, sizeof(Board) + sizeof(int) * param_array[0] * param_array[1]);
+    shm_unlink(SHM_NAME_BOARD);
+
+    munmap(sync, sizeof(Sinchronization));
+    shm_unlink(SHM_NAME_SYNC);
 
     return 0;
 
@@ -389,13 +409,13 @@ void create_sem(sem_t * sem, int value){
     }
 }
 
-void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
+pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
     board->width = param_array[0];
     board->height = param_array[1];
     board->num_players = num_players;
     board->has_ended = false;
 
-    generate_board(board->board_pointer, board->width, board->height);
+    generate_board(board->board_pointer, board->width, board->height, param_array[4]);
 
     Point * points = generate_circle(board->width, board->height, num_players);
 
@@ -425,18 +445,19 @@ void initialize_game(Board * board, int param_array[], char * player_array[], in
             perror("fork");
             exit(EXIT_FAILURE);
         } else if (board->player_list[i].pid == 0){
-            
-            dup2(write_fd[i][0], STDIN_FILENO);
-            close(write_fd[i][0]);
+            close(write_fd[i][0]); // Cerrar el extremo de lectura del pipe en el hijo
+            dup2(write_fd[i][1], STDOUT_FILENO); // Redirigir el extremo de escritura al estándar de salida
 
             argv[0] = player_array[i];
-            
+
             if (execve(player_array[i], argv ,NULL) == -1) {
                 perror("execve");
                 exit(EXIT_FAILURE);
 
             }
            
+        } else {
+            close(write_fd[i][1]); // Cerrar el extremo de escritura del pipe en el padre
         }
 
 
@@ -457,17 +478,13 @@ void initialize_game(Board * board, int param_array[], char * player_array[], in
                 exit(EXIT_FAILURE);
             }
         }
+        return pid;
     }
-
-
-       
-
-
-
+    return -1;
 }
 
-void generate_board(int * board_pointer, int width, int height){
-    srand(time(NULL));
+void generate_board(int * board_pointer, int width, int height, int seed){
+    srand(seed);
     for (int i = 0; i < width * height; i++){
         board_pointer[i] = rand() % 9 + 1;
     }
