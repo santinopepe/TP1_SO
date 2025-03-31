@@ -2,7 +2,16 @@
 #include <stdlib.h>
 #include <time.h>
 
-
+const int directions[8][2] = {
+    {0, -1},  // Arriba
+    {1, -1},  // Arriba-Derecha
+    {1, 0},   // Derecha
+    {1, 1},    // Abajo-Derecha
+    {0, 1},   // Abajo
+    {-1, 1},  // Abajo-Izquierda
+    {-1, 0},  // Izquierda
+    {-1, -1}, // Arriba-Izquierda
+};
 
 
 void * create_shm(char * name, int size, int flags){
@@ -29,16 +38,7 @@ void * create_shm(char * name, int size, int flags){
 
 int find_best_path(Board *board, Player *player) {
     // Direcciones posibles: {dx, dy}
-    int directions[8][2] = {
-            {0, -1},  // Arriba
-            {1, -1},  // Arriba-Derecha
-            {1, 0},   // Derecha
-            {1, 1},    // Abajo-Derecha
-            {0, 1},   // Abajo
-            {-1, 1},  // Abajo-Izquierda
-            {-1, 0},  // Izquierda
-            {-1, -1}, // Arriba-Izquierda
-    };
+   
 
     int max_points, best_move, new_x, new_y;
 
@@ -132,6 +132,9 @@ int main(int argc, char * argv[]){
 
         sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
 
+        int x = board->player_list[player_number].coord_x;
+        int y = board->player_list[player_number].coord_y;
+
         if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
             perror("write");
             exit(EXIT_FAILURE);
@@ -143,9 +146,9 @@ int main(int argc, char * argv[]){
             sem_post(&sync->master_mutex);  // Último lector desbloquea al master
         }
         sem_post(&sync->variable_mutex);
-
-        usleep(2000000);
-
+        
+        while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
+        
     }
 
     if (munmap(board, sizeof(Board) + sizeof(int)*width*height) == -1) {
