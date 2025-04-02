@@ -243,45 +243,46 @@ int main(int argc, char *argv[]) {
                     move_player(board, &board->player_list[i], move, board->width, i);
                     
                 }
-                if (blocked_players == num_players){ 
-                    board->has_ended = true;
-                    break;
-                }
                 sem_post(&sync->master_mutex);
             }
-            if(view!=NULL){
-                sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
-                sem_wait(&sync->view_done); //Espero a que la vista termine de imprimir el board. 
-                usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
-            }
             
-
             check_can_move(board, &board->player_list[i], board->width, board->height);      
             if(board->player_list[i].is_blocked){
                 blocked_players++;
             }  
-
             
+            if(view!=NULL){
+                sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
+                sem_wait(&sync->view_done); //Espero a que la vista termine de imprimir el board. 
+                usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
+            }  
+            if (blocked_players == num_players){ 
+                board->has_ended = true;
+                break;
+            }          
+        }
+
+    }
+
+
+
+    int status;
+    if(view != NULL){
+        waitpid(view_pid, &status , WNOHANG);
+        if(WIFEXITED(status)){
+            printf("View exited (%d)\n", WEXITSTATUS(status));
         }
     }
-
-
-
-    if(view != NULL){
-        waitpid(view_pid, NULL, 0);
-        printf("View exited ()\n" );
-    }
-
-
-     for (int i = 0; i < num_players; i++)
+    for (int i = 0; i < num_players; i++)
     {
-        waitpid(board->player_list[i].pid, NULL, 0);
 
-        close(pipe_fd[i][0]); // Cerrar el descriptor de lectura después de leer
-        close(pipe_fd[i][1]); // Cerrar el descriptor de lectura después de leer
-
+        pid_t pid = waitpid(board->player_list[i].pid, &status, 0);
+        if (pid > 0) {
+            if (WIFEXITED(status)) {
+                printf("Player %d exited (%d) with a score of %d/%d/%d \n", i, WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
+            }
+        }
     }
-    printf("Players exited ()\n" );
 
 
     sem_destroy(&sync->changes);

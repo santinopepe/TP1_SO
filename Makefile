@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -lm -std=c99 -pedantic 
+CFLAGS = -Wall -lm -pedantic 
 
 all: view player playerI master
 
@@ -13,7 +13,7 @@ playerI:
 	$(CC) $(CFLAGS) PlayerInteligente.c -o playerI.o
 
 master: 
-	$(CC) $(CFLAGS) Master.c -o master.o
+	$(CC) $(CFLAGS) Master.c -o master.o -lm
 
 clean:
 	rm -f view.o player.o playerI.o
