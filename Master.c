@@ -177,60 +177,60 @@ int main(int argc, char *argv[]) {
 
     print_game_vals(param_array, player_array, view, num_players);
 
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*param_array[0]*param_array[1], O_CREAT); //This multiplication, sizeof(int)*param_array[0]*param_array[1] == sizeof(int)*width*height, is the size of the board_pointer array.
+    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*param_array[0]*param_array[1], O_CREAT); 
 
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_CREAT);
     
     initialize_sync(sync);
     int max_fd=0;
     for (int i = 0; i < num_players; i++){
+
         if (pipe(pipe_fd[i]) == -1){
             perror("pipe");
             exit(EXIT_FAILURE);
         }
-        if (pipe_fd[i][0] > max_fd) {
-            max_fd = pipe_fd[i][0];
-        }
+        
     }
 
-
     pid_t view_pid = initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
-
-
 
     fd_set read_fds;
     unsigned char move;
     int blocked_players = 0;
     int ready; 
-    
     struct timeval timeout;
-    while(!board->has_ended){
 
+    for(int i = 0; i < num_players; i++){
+        if (pipe_fd[i][0] > max_fd){
+            max_fd = pipe_fd[i][0];
+        }
+    }
+
+    while(!board->has_ended){
         FD_ZERO(&read_fds);
-        
         for (int i = 0; i < num_players; i++){
-            if (pipe_fd[i][0] >= 0) {
-                FD_SET(pipe_fd[i][0], &read_fds);
-            }
+            FD_SET(pipe_fd[i][0], &read_fds);
+            
         }
 
         timeout.tv_sec = param_array[3];
         timeout.tv_usec = 0;
-        
         ready = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
         if (ready == -1){
             perror("select");
             exit(EXIT_FAILURE);
-        } 
+        } else if(ready == 0){
+            perror("Timeout");
+            exit(EXIT_FAILURE);
+        }
 
         
          for(int i = 0; i < num_players; i++){
             if(board->player_list[i].is_blocked){
                 continue;
             }
-            if (FD_ISSET(pipe_fd[i][0], &read_fds)){
+            if(FD_ISSET(pipe_fd[i][0], &read_fds)){
                 read(pipe_fd[i][0], &move, sizeof(unsigned char));
-                
                 sem_wait(&sync->game_state_mutex);
                 sem_wait(&sync->master_mutex); //Bloqueo el acceso al board pq estoy modificando
                 sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
@@ -238,31 +238,31 @@ int main(int argc, char *argv[]) {
                 if (!is_valid_move(board, &board->player_list[i], move, board->width, board->height)){ 
                     
                     board->player_list[i].ilegal_moves++;
-                    check_can_move(board, &board->player_list[i], board->width, board->height);      
-                    if(board->player_list[i].is_blocked){
-                        blocked_players++;
-
-                    }          
+                            
                 } else{
                     move_player(board, &board->player_list[i], move, board->width, i);
+                    
                 }
-
                 if (blocked_players == num_players){ 
                     board->has_ended = true;
                     break;
                 }
                 sem_post(&sync->master_mutex);
             }
+            if(view!=NULL){
+                sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
+                sem_wait(&sync->view_done); //Espero a que la vista termine de imprimir el board. 
+                usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
+            }
+            
+
+            check_can_move(board, &board->player_list[i], board->width, board->height);      
+            if(board->player_list[i].is_blocked){
+                blocked_players++;
+            }  
+
+            
         }
-
-
-        sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
-
-        sem_wait(&sync->view_done); //Espero a que la vista termine de imprimir el board. 
-
-        usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
-        
-
     }
 
 
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
         close(pipe_fd[i][1]); // Cerrar el descriptor de lectura después de leer
 
     }
-    
+    printf("Players exited ()\n" );
 
 
     sem_destroy(&sync->changes);
@@ -361,7 +361,7 @@ void print_game_vals(int param_array[], char * player_array[], char * view ,int 
     printf("view: %s\n", view);
     printf("num_players: %d\n", num_players); 
     for (int i = 0; i < num_players; i++){
-        printf("Player %d: %s\n", i+1, player_array[i]);
+        printf("Player %d: %s\n", i, player_array[i]);
     }
 }
 
@@ -436,13 +436,17 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
         
         board->board_pointer[points[i].y * board->width + points[i].x] = (-1)*(i); 
 
-        board->player_list[i].pid = fork();
+        pid_t pid = fork();
         if (board->player_list[i].pid == -1){
             perror("fork");
             exit(EXIT_FAILURE);
-        } else if (board->player_list[i].pid == 0){
+        } else if (pid > 0) {
+            board->player_list[i].pid = pid;
+            close(write_fd[i][1]); // Cerrar el extremo de escritura del pipe en el padre
+        }else {
             close(write_fd[i][0]); // Cerrar el extremo de lectura del pipe en el hijo
             dup2(write_fd[i][1], STDOUT_FILENO); // Redirigir el extremo de escritura al estándar de salida
+            close(write_fd[i][1]);
 
             argv[0] = player_array[i];
 
@@ -451,9 +455,6 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
                 exit(EXIT_FAILURE);
 
             }
-           
-        } else {
-            close(write_fd[i][1]); // Cerrar el extremo de escritura del pipe en el padre
         }
 
 

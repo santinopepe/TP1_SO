@@ -101,14 +101,12 @@ int main(int argc, char * argv[]){
     //veo que proceso es el que esta corriendo
     pid_t pid = getpid();
     int player_number = 0;
-    while (player_number < board->num_players)
-    {
+    while (player_number < board->num_players)    {
         if(board->player_list[player_number].pid == pid){
             break;
         }
         player_number++;
     }
-
 
     while (!board->player_list[player_number].is_blocked){
         sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando

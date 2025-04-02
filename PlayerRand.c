@@ -90,9 +90,9 @@ int main(int argc, char * argv[]){
           sem_post(&sync->master_mutex);
       }
       sem_post(&sync->variable_mutex);
-/*
+
       int x = board->player_list[player_number].coord_x;
-        int y = board->player_list[player_number].coord_y;*/
+        int y = board->player_list[player_number].coord_y;
       
       // Escribir el movimiento en el pipe
       if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
