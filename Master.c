@@ -102,7 +102,7 @@ void create_sem(sem_t * sem, int value);
  * @param view The view.
  * @param write_fd Matrix with the file descriptors.
 */
-pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
+void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
 
 /**
  * @brief Generate the random values on the board. Used in initialize_game.
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
         
     }
 
-    pid_t view_pid = initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
+    initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
 
     fd_set read_fds;
     unsigned char move;
@@ -268,14 +268,12 @@ int main(int argc, char *argv[]) {
 
     int status;
     if(view != NULL){
-        waitpid(view_pid, &status , WNOHANG);
         if(WIFEXITED(status)){
             printf("View exited (%d)\n", WEXITSTATUS(status));
         }
     }
     for (int i = 0; i < num_players; i++)
     {
-
         pid_t pid = waitpid(board->player_list[i].pid, &status, 0);
         if (pid > 0) {
             if (WIFEXITED(status)) {
@@ -333,7 +331,11 @@ int set_params(int argc, char *argv[], int param_array[], char *player_array[], 
             *view = argv[i + 1];
         } else if (strcmp(argv[i], "-p") == 0) {
             i++;
-            for (; num_players < MAX_PLAYERS && i < argc; num_players++, i++) {
+            for (;i < argc; num_players++, i++) {
+                if (num_players > MAX_PLAYERS) {
+                    fprintf(stderr, "Demasiados jugadores\n");
+                    exit(EXIT_FAILURE);
+                }
                 if (argv[i] == NULL || !check_is_player(argv[i])) {
                     i--; //If the player is not valid, we go back one position to read it again, due to the fact that it is a flag or NULL, and we need to read it again. Or if we reached the end of the array.
                     break;
@@ -404,7 +406,7 @@ void create_sem(sem_t * sem, int value){
     }
 }
 
-pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
+void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
     board->width = param_array[0];
     board->height = param_array[1];
     board->num_players = num_players;
@@ -476,9 +478,7 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
                 exit(EXIT_FAILURE);
             }
         }
-        return pid;
     }
-    return -1;
 }
 
 void generate_board(int * board_pointer, int width, int height, int seed){
