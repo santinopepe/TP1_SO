@@ -111,39 +111,34 @@ int main(int argc, char * argv[]){
 
 
     while (!board->player_list[player_number].is_blocked){
-        sem_wait(&sync->variable_mutex);
+        sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
+        sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
 
+        sem_wait(&sync->variable_mutex);
         sync->readers_count++;
         if (sync->readers_count == 1) {
             sem_wait(&sync->master_mutex);  // Primer lector bloquea al master
         }
         sem_post(&sync->variable_mutex);
 
-
-
-        sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
-
         move = find_best_path(board, &board->player_list[player_number]);
-
-        sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
 
         int x = board->player_list[player_number].coord_x;
         int y = board->player_list[player_number].coord_y;
-
-        if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
-            perror("write");
-            exit(EXIT_FAILURE);
-        }
-
+        
         sem_wait(&sync->variable_mutex);
         sync->readers_count--;
         if (sync->readers_count == 0) {
             sem_post(&sync->master_mutex);  // Último lector desbloquea al master
         }
         sem_post(&sync->variable_mutex);
-        
+
+        if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
+            perror("write");
+            exit(EXIT_FAILURE);
+        } 
         while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
-        
+       
     }
 
     if (munmap(board, sizeof(Board) + sizeof(int)*width*height) == -1) {

@@ -165,8 +165,6 @@ bool is_valid_move(Board *board, Player *player, int move, int width, int height
 /*---------------------------------------------------------------------Main----------------------------------------------------------------------------------------------------------*/
 
 
-
-
 int main(int argc, char *argv[]) {
 
 
@@ -184,11 +182,14 @@ int main(int argc, char *argv[]) {
     Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_CREAT);
     
     initialize_sync(sync);
-
+    int max_fd=0;
     for (int i = 0; i < num_players; i++){
         if (pipe(pipe_fd[i]) == -1){
             perror("pipe");
             exit(EXIT_FAILURE);
+        }
+        if (pipe_fd[i][0] > max_fd) {
+            max_fd = pipe_fd[i][0];
         }
     }
 
@@ -203,63 +204,54 @@ int main(int argc, char *argv[]) {
     int ready; 
     
     struct timeval timeout;
-
     while(!board->has_ended){
-        FD_ZERO(&read_fds);
-        int max_fd = 0;
-        for (int i = 0; i < num_players; i++){
 
+        FD_ZERO(&read_fds);
+        
+        for (int i = 0; i < num_players; i++){
             if (pipe_fd[i][0] >= 0) {
                 FD_SET(pipe_fd[i][0], &read_fds);
-                if (pipe_fd[i][0] > max_fd) {
-                    max_fd = pipe_fd[i][0];
-                }
-            } else {
-                printf("Invalid file descriptor for player %d\n", i);
             }
         }
 
         timeout.tv_sec = param_array[3];
         timeout.tv_usec = 0;
+        
         ready = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
         if (ready == -1){
             perror("select");
             exit(EXIT_FAILURE);
-        } else if (ready == 0) {
-            board->has_ended = true;
-            break;
-        }
+        } 
 
         
          for(int i = 0; i < num_players; i++){
+            if(board->player_list[i].is_blocked){
+                continue;
+            }
             if (FD_ISSET(pipe_fd[i][0], &read_fds)){
+                read(pipe_fd[i][0], &move, sizeof(unsigned char));
+                
                 sem_wait(&sync->game_state_mutex);
-                int bytes_read = read(pipe_fd[i][0], &move, sizeof(unsigned char));
-                sem_post(&sync->game_state_mutex);
-                if (bytes_read > 0) {
-                    printf("Player %d sent move: %d\n", i, move);
-                    // Procesar el movimiento...
-                } else {
-                    perror("read");
-                }
+                sem_wait(&sync->master_mutex); //Bloqueo el acceso al board pq estoy modificando
+                sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
+
                 if (!is_valid_move(board, &board->player_list[i], move, board->width, board->height)){ 
                     
                     board->player_list[i].ilegal_moves++;
                     check_can_move(board, &board->player_list[i], board->width, board->height);      
                     if(board->player_list[i].is_blocked){
                         blocked_players++;
+
                     }          
                 } else{
-                    sem_wait(&sync->master_mutex); //Bloqueo el acceso al board pq estoy modificando
                     move_player(board, &board->player_list[i], move, board->width, i);
-                    sem_post(&sync->master_mutex);
-
                 }
 
                 if (blocked_players == num_players){ 
                     board->has_ended = true;
                     break;
                 }
+                sem_post(&sync->master_mutex);
             }
         }
 
@@ -275,7 +267,10 @@ int main(int argc, char *argv[]) {
 
 
 
-
+    if(view != NULL){
+        waitpid(view_pid, NULL, 0);
+        printf("View exited ()\n" );
+    }
 
 
      for (int i = 0; i < num_players; i++)
@@ -286,9 +281,8 @@ int main(int argc, char *argv[]) {
         close(pipe_fd[i][1]); // Cerrar el descriptor de lectura después de leer
 
     }
-    if(view != NULL){
-        waitpid(view_pid, NULL, 0);
-    }
+    
+
 
     sem_destroy(&sync->changes);
     sem_destroy(&sync->view_done);
@@ -419,6 +413,7 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
 
     Point * points = generate_circle(board->width, board->height, num_players);
 
+   
 
     char width[10];
     char height[10];
@@ -432,13 +427,14 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
     for (int i = 0; i < num_players; i++){
 
         board->player_list[i].coord_x = points[i].x;
-        board->player_list[i].coord_y = points[i].y;
+        board->player_list[i].coord_y = points[i].y; 
         strcpy(board->player_list[i].name, player_array[i]);
         board->player_list[i].points = 0;
         board->player_list[i].ilegal_moves = 0;
         board->player_list[i].valid_moves = 0;
         board->player_list[i].is_blocked = false;
-
+        
+        board->board_pointer[points[i].y * board->width + points[i].x] = (-1)*(i); 
 
         board->player_list[i].pid = fork();
         if (board->player_list[i].pid == -1){

@@ -69,11 +69,14 @@ int main(int argc, char * argv[]){
     
     
     while (!board->player_list[player_number].is_blocked){
+      sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
+      sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
+
     // Incrementar readers_count
       sem_wait(&sync->variable_mutex);
       sync->readers_count++;
       if (sync->readers_count == 1) {
-          sem_wait(&sync->game_state_mutex);
+          sem_wait(&sync->master_mutex);
       }
       sem_post(&sync->variable_mutex);
 
@@ -84,12 +87,12 @@ int main(int argc, char * argv[]){
       sem_wait(&sync->variable_mutex);
       sync->readers_count--;
       if (sync->readers_count == 0) {
-          sem_post(&sync->game_state_mutex);
+          sem_post(&sync->master_mutex);
       }
       sem_post(&sync->variable_mutex);
-
+/*
       int x = board->player_list[player_number].coord_x;
-        int y = board->player_list[player_number].coord_y;
+        int y = board->player_list[player_number].coord_y;*/
       
       // Escribir el movimiento en el pipe
       if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
