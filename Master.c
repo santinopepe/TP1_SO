@@ -102,7 +102,7 @@ void create_sem(sem_t * sem, int value);
  * @param view The view.
  * @param write_fd Matrix with the file descriptors.
 */
-void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
+pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]); 
 
 /**
  * @brief Generate the random values on the board. Used in initialize_game.
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
         
     }
 
-    initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
+    pid_t viewPid =  initialize_game(board, param_array, player_array, num_players, view, pipe_fd);
 
     fd_set read_fds;
     unsigned char move;
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
             max_fd = pipe_fd[i][0];
         }
     }
-
+    sleep(1); //Delay to let the players start before the game starts.
     while(!board->has_ended){
         FD_ZERO(&read_fds);
         for (int i = 0; i < num_players; i++){
@@ -257,28 +257,36 @@ int main(int argc, char *argv[]) {
                 usleep(param_array[2]*1000); //Delay para que la vista pueda imprimir el board.
             }  
             if (blocked_players == num_players){ 
+                sem_post(&sync->changes);
                 board->has_ended = true;
                 break;
             }          
         }
 
+
     }
+
+    
 
 
 
     int status;
+    pid_t pid;
+
+
     if(view != NULL){
-        if(WIFEXITED(status)){
-            printf("View exited (%d)\n", WEXITSTATUS(status));
-        }
+        pid = waitpid(viewPid,&status, 0); 
+        printf("View exited (%d)\n", WEXITSTATUS(status)); 
     }
+    
+
+
     for (int i = 0; i < num_players; i++)
     {
-        pid_t pid = waitpid(board->player_list[i].pid, &status, 0);
-        if (pid > 0) {
-            if (WIFEXITED(status)) {
-                printf("Player %d exited (%d) with a score of %d/%d/%d \n", i, WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
-            }
+        pid = waitpid(board->player_list[i].pid, &status, WNOHANG);
+        if (pid >= 0) {
+            printf("Player %s (%d) exited (%d) with a score of %d/%d/%d \n", board->player_list[i].name, i + 1 , WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
+        
         }
     }
 
@@ -391,7 +399,7 @@ void * create_shm(char * name, int size, int flags){
 }
 
 void initialize_sync(Sinchronization * sync){
-    create_sem(&sync->changes, 1);
+    create_sem(&sync->changes, 0);
     create_sem(&sync->view_done, 0);
     create_sem(&sync->master_mutex, 1);
     create_sem(&sync->game_state_mutex, 1);
@@ -406,7 +414,7 @@ void create_sem(sem_t * sem, int value){
     }
 }
 
-void initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
+pid_t initialize_game(Board * board, int param_array[], char * player_array[], int num_players, char * view, int write_fd[][2]){
     board->width = param_array[0];
     board->height = param_array[1];
     board->num_players = num_players;
@@ -465,9 +473,10 @@ void initialize_game(Board * board, int param_array[], char * player_array[], in
     
     free(points);
 
+    pid_t pid;
     
     if (view != NULL){
-        pid_t pid = fork();
+        pid = fork();
         if (pid == -1){
             perror("fork");
             exit(EXIT_FAILURE);
@@ -479,6 +488,8 @@ void initialize_game(Board * board, int param_array[], char * player_array[], in
             }
         }
     }
+
+    return pid; 
 }
 
 void generate_board(int * board_pointer, int width, int height, int seed){

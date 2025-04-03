@@ -97,7 +97,6 @@ int main(int argc, char * argv[]) {
         // Imprimir el estado del juego
         print_board(board);
         print_players(board);
-        
         // Indicar al máster que la vista terminó de imprimir
         sem_post(&(sync->view_done));
         
@@ -109,6 +108,5 @@ int main(int argc, char * argv[]) {
     if (munmap(sync, sizeof(Sinchronization)) == -1) {
         perror("munmap");
     }
-     
     return 0;
 }

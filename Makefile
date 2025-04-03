@@ -16,4 +16,4 @@ master:
 	$(CC) $(CFLAGS) Master.c -o master.o -lm
 
 clean:
-	rm -f view.o player.o playerI.o
+	rm -f view.o player.o playerI.o master.o
