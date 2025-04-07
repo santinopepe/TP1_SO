@@ -241,15 +241,18 @@ int main(int argc, char *argv[]) {
                             
                 } else{
                     move_player(board, &board->player_list[i], move, board->width, i);
-                    
+                    for(int j = 0; j < num_players; j++){
+                        if (board->player_list[j].is_blocked){
+                            continue;
+                        }
+                        check_can_move(board, &board->player_list[j], board->width, board->height);      
+                        if(board->player_list[j].is_blocked){
+                            blocked_players++;
+                        } 
+                    }
                 }
                 sem_post(&sync->master_mutex);
             }
-            
-            check_can_move(board, &board->player_list[i], board->width, board->height);      
-            if(board->player_list[i].is_blocked){
-                blocked_players++;
-            }  
             
             if(view!=NULL){
                 sem_post(&sync->changes); //Aviso que hubienro cambios en el board. 
@@ -283,9 +286,9 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_players; i++)
     {
-        pid = waitpid(board->player_list[i].pid, &status, WNOHANG);
+        pid = waitpid(board->player_list[i].pid, &status, 0);
         if (pid >= 0) {
-            printf("Player %s (%d) exited (%d) with a score of %d/%d/%d \n", board->player_list[i].name, i + 1 , WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
+            printf("Player %s (%d) exited (%d) with a score of %d/%d/%d \n", board->player_list[i].name, i, WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
         
         }
     }
