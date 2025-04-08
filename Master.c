@@ -291,6 +291,7 @@ int main(int argc, char *argv[]) {
             printf("Player %s (%d) exited (%d) with a score of %d/%d/%d \n", board->player_list[i].name, i, WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
         
         }
+        close(pipe_fd[i][0]); // Cerrar el extremo de lectura del pipe en el padre
     }
 
 
@@ -300,10 +301,19 @@ int main(int argc, char *argv[]) {
     sem_destroy(&sync->game_state_mutex);
     sem_destroy(&sync->variable_mutex);
 
-    munmap(board, sizeof(Board) + sizeof(int) * param_array[0] * param_array[1]);
+    
+    
+    if(munmap(board, sizeof(Board) + sizeof(int) * param_array[0] * param_array[1]) == -1){
+        perror("munmap");
+        exit(EXIT_FAILURE);
+    }
+
     shm_unlink(SHM_NAME_BOARD);
 
-    munmap(sync, sizeof(Sinchronization));
+    if(munmap(sync, sizeof(Sinchronization)) == -1){
+        perror("munmap");
+        exit(EXIT_FAILURE);
+    }
     shm_unlink(SHM_NAME_SYNC);
 
     return 0;
