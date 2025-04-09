@@ -1,4 +1,5 @@
 #include "Utilis.h"
+#include "Shm_Lib.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -13,28 +14,6 @@ const int directions[8][2] = {
     {-1, -1}, // Arriba-Izquierda
 };
 
-
-void * create_shm(char * name, int size, int flags){
-
-    int fd = shm_open(name, flags, 0666);
-    if (fd == -1) {
-        perror("shm_open");
-        exit(EXIT_FAILURE);
-    }
-    int aux;
-    if(flags==O_RDONLY){
-        aux = PROT_READ;
-    } else{
-        aux = PROT_READ | PROT_WRITE;
-    }
-    void * ptr = mmap(0, size, aux, MAP_SHARED, fd, 0);
-    if (ptr == MAP_FAILED) {
-        perror("mmap");
-        exit(EXIT_FAILURE);
-    }
-
-    return ptr;
-}
 
 int find_best_path(Board *board, Player *player) {
     // Direcciones posibles: {dx, dy}
@@ -90,13 +69,11 @@ int main(int argc, char * argv[]){
     }
 
     int width = atoi(argv[1]);
-    int height = atoi(argv[2]);
-
 
 
     // Conectar a las memorias compartidas
-    Board * board = (Board * ) create_shm(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
-    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
+    Board * board = (Board * ) open_shm(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
+    Sinchronization * sync = (Sinchronization *) open_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
 
     //veo que proceso es el que esta corriendo
     pid_t pid = getpid();
@@ -108,9 +85,10 @@ int main(int argc, char * argv[]){
         player_number++;
     }
 
-    while (!board->player_list[player_number].is_blocked){
-        sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
-        sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
+    while (!board->player_list[player_number].is_blocked && !board->has_ended) {
+
+        sem_wait(&sync->game_state_mutex); 
+        sem_post(&sync->game_state_mutex); 
 
         sem_wait(&sync->variable_mutex);
         sync->readers_count++;
@@ -135,15 +113,14 @@ int main(int argc, char * argv[]){
             perror("write");
             exit(EXIT_FAILURE);
         } 
+        
         while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
        
     }
 
-    if (munmap(board, sizeof(Board) + sizeof(int)*width*height) == -1) {
-        perror("munmap");
-    }
-    if (munmap(sync, sizeof(Sinchronization)) == -1) {
-        perror("munmap");
-    }
+    // Cerrar la memoria compartida
+    close_shm(board, sizeof(Board) + sizeof(int) * board->width * board->height);
+    close_shm(sync, sizeof(Sinchronization));
+
     return 0;
 }

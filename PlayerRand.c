@@ -1,4 +1,5 @@
 #include "Utilis.h"
+#include "Shm_Lib.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -13,27 +14,6 @@ const int directions[8][2] = {
     {-1, -1}, // Arriba-Izquierda
 };
 
-void * create_shm(char * name, int size, int flags){
-
-  int fd = shm_open(name, flags, 0666);
-  if (fd == -1) {
-      perror("shm_open");
-      exit(EXIT_FAILURE);
-  }
-  int aux;
-  if(flags==O_RDONLY){
-      aux = PROT_READ;
-  } else{
-      aux = PROT_READ | PROT_WRITE;
-  }
-  void * ptr = mmap(0, size, aux, MAP_SHARED, fd, 0);
-  if (ptr == MAP_FAILED) {
-      perror("mmap");
-      exit(EXIT_FAILURE);
-  }
-
-  return ptr;
-}
 
 
 int main(int argc, char * argv[]){
@@ -50,8 +30,8 @@ int main(int argc, char * argv[]){
      
 
     // Conectar a las memorias compartidas
-    Board * board = (Board * ) create_shm(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
-    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
+    Board * board = (Board * ) shm_open(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
+    Sinchronization * sync = (Sinchronization *) shm_open(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
 
     //veo que proceso es el que esta corriendo
     pid_t pid = getpid();
@@ -67,8 +47,10 @@ int main(int argc, char * argv[]){
 
     srand(time(NULL));
     
+
     
-    while (!board->player_list[player_number].is_blocked){
+    while (!board->player_list[player_number].is_blocked && !board->has_ended) {
+
       sem_wait(&sync->game_state_mutex); //Bloqueo el acceso al board pq estoy modificando
       sem_post(&sync->game_state_mutex); //Desbloqueo el acceso al board pq termine de modificar
 
@@ -81,7 +63,7 @@ int main(int argc, char * argv[]){
       sem_post(&sync->variable_mutex);
 
       // Enviar solicitud de movimiento al máster
-      move = rand() % 8;
+      move = 0; 
 
       //Decrementar readers_count
       sem_wait(&sync->variable_mutex);
@@ -92,7 +74,7 @@ int main(int argc, char * argv[]){
       sem_post(&sync->variable_mutex);
 
       int x = board->player_list[player_number].coord_x;
-        int y = board->player_list[player_number].coord_y;
+      int y = board->player_list[player_number].coord_y;
       
       // Escribir el movimiento en el pipe
       if (write(STDOUT_FILENO, &move, sizeof(unsigned char)) == -1) {
@@ -100,7 +82,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
       }      
   
-      //while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
+      while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
     }     
     
   // Cleanup

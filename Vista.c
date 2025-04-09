@@ -1,29 +1,7 @@
 #include "Utilis.h"
+#include "Shm_Lib.h"
 #include <stdlib.h>
-int toNum(char * str);
 
-
-void * create_shm(char * name, int size, int flags){
-
-    int fd = shm_open(name, flags, 0666);
-    if (fd == -1) {
-        perror("shm_open");
-        exit(EXIT_FAILURE);
-    }
-    int aux;
-    if(flags==O_RDONLY){
-        aux = PROT_READ;
-    } else{
-        aux = PROT_READ | PROT_WRITE;
-    }
-    void * ptr = mmap(0, size, aux, MAP_SHARED, fd, 0);
-    if (ptr == MAP_FAILED) {
-        perror("mmap");
-        exit(EXIT_FAILURE);
-    }
-  
-    return ptr;
-  }
   
 const char *colors[] = {
             "\x1B[31m", // Rojo
@@ -86,8 +64,8 @@ int main(int argc, char * argv[]) {
 
 
     // Conectar a las memorias compartidas
-    Board * board = (Board *) create_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*width*height, O_RDONLY);
-    Sinchronization * sync = (Sinchronization *) create_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
+    Board * board = (Board *) open_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*width*height, O_RDONLY);
+    Sinchronization * sync = (Sinchronization *) open_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
 
 
     while (!board->has_ended){
@@ -101,12 +79,10 @@ int main(int argc, char * argv[]) {
         sem_post(&(sync->view_done));
         
     }
-     // Cleanup
-    if (munmap(board, sizeof(Board)+ sizeof(int)*width*height) == -1) {
-        perror("munmap");
-    }
-    if (munmap(sync, sizeof(Sinchronization)) == -1) {
-        perror("munmap");
-    }
+
+    // Cleanup
+    close_shm(board, sizeof(Board) + sizeof(int)*width*height);
+    close_shm(sync, sizeof(Sinchronization));
+
     return 0;
 }
