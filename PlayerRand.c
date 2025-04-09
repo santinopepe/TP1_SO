@@ -30,8 +30,8 @@ int main(int argc, char * argv[]){
      
 
     // Conectar a las memorias compartidas
-    Board * board = (Board * ) shm_open(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
-    Sinchronization * sync = (Sinchronization *) shm_open(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
+    Board * board = (Board * ) open_shm(SHM_NAME_BOARD, sizeof(Board), O_RDONLY);
+    Sinchronization * sync = (Sinchronization *) open_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
 
     //veo que proceso es el que esta corriendo
     pid_t pid = getpid();

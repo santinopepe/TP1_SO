@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 
 
 /* This struct is used to store the initial 

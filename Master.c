@@ -49,8 +49,9 @@ int main(int argc, char *argv[]) {
 
     // This variables are used to give equal distribution of priority to the players. 
     // Without this, the players that are in the first positions will always play first.
-    int index = 0; 
+    int index =0;
     int start = 0;
+    gettimeofday(&last_valid_move_time, NULL); 
     while(!board->has_ended){
         
         FD_ZERO(&read_fds);
@@ -71,19 +72,17 @@ int main(int argc, char *argv[]) {
             break; //Exit the game if timeout occurs. So we can cleanup the memory an pipes correctly 
         }
 
-         gettimeofday(&current_time, NULL);
-         long elapsed_time = (current_time.tv_sec - last_valid_move_time.tv_sec) * 1000 +
-                             (current_time.tv_usec - last_valid_move_time.tv_usec) / 1000;
+        gettimeofday(&current_time, NULL);
+        long elapsed_time = (current_time.tv_sec - last_valid_move_time.tv_sec) * 1000 +
+                            (current_time.tv_usec - last_valid_move_time.tv_usec) / 1000;
  
-         if (elapsed_time > param_array[3] * 1000) {
-            printf("Timeout: No se recibieron movimientos válidos en el tiempo límite.\n");
+        if (elapsed_time > param_array[3] * 1000) {
             board->has_ended = true;
             break;
         }
         
         for(int i = 0; i < num_players; i++){
             index = (start + i) % num_players;
-
             if(board->player_list[index].is_blocked){
                 continue;
             }
@@ -97,10 +96,10 @@ int main(int argc, char *argv[]) {
                 if (!is_valid_move(board, &board->player_list[index], move, board->width, board->height)){ 
                     
                     board->player_list[index].ilegal_moves++;
-                            
                 } else{
-                    move_player(board, &board->player_list[index], move, board->width, i);
-                    gettimeofday(&last_valid_move_time, NULL); 
+                    gettimeofday(&last_valid_move_time, NULL);
+                    move_player(board, &board->player_list[index], move, board->width, index);
+                     
 
                     // This forloop is used to check if the player that moved blocked another player and it also checks if the player that moved is blocked.
                     for(int j = 0; j < num_players; j++){
@@ -122,13 +121,12 @@ int main(int argc, char *argv[]) {
                 usleep(param_array[2]*1000); 
             }  
             if (blocked_players == num_players){ 
-                sem_post(&sync->changes);
                 board->has_ended = true;
                 break;
             }          
         }
 
-        start = ((start + 1) % num_players);
+        start++;
 
     }
 
@@ -136,8 +134,7 @@ int main(int argc, char *argv[]) {
     pid_t pid;
 
     if(view != NULL){
-        sem_post(&sync->changes); // This is used to unblock the view process if it is waiting for changes. 
-                                 // Due to the fact tha execution can be interrupted by the timeout.
+        sem_post(&sync->changes); 
         pid = waitpid(viewPid,&status, 0); 
         printf("View exited (%d)\n", WEXITSTATUS(status)); 
     }

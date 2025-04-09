@@ -86,7 +86,6 @@ int main(int argc, char * argv[]){
     }
 
     while (!board->player_list[player_number].is_blocked && !board->has_ended) {
-
         sem_wait(&sync->game_state_mutex); 
         sem_post(&sync->game_state_mutex); 
 
@@ -115,9 +114,9 @@ int main(int argc, char * argv[]){
         } 
         
         while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
-       
+    
     }
-
+    
     // Cerrar la memoria compartida
     close_shm(board, sizeof(Board) + sizeof(int) * board->width * board->height);
     close_shm(sync, sizeof(Sinchronization));

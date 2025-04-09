@@ -10,10 +10,10 @@ player: PlayerRand.c
 	$(CC) $(CFLAGS) PlayerRand.c Shm_Lib.c -o player.out
 
 playerI:
-	$(CC) $(CFLAGS) PlayerInteligente.c   Shm_Lib.c -o playerI.out
+	$(CC) $(CFLAGS) PlayerInteligente.c Shm_Lib.c -o playerI.out
 
 master: 
 	$(CC) $(CFLAGS) Master.c Shm_Lib.c Master_Lib.c -o master.out -lm
 
 clean:
-	rm -f view.oiu player.out playerI.out master.out
+	rm -f view.out player.out playerI.out master.out
