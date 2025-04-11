@@ -16,10 +16,7 @@
 
 
 
-#define SHM_NAME_BOARD "/game_state"
-#define SHM_NAME_SYNC "/game_sync"
 
-#define MAX_PLAYERS 9
 
 typedef struct {
     char name[16]; // Nombre del jugador

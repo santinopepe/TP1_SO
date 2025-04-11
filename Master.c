@@ -1,6 +1,17 @@
 
 #include "Master_Lib.h"
 
+#define TIMEOUT 3   //Timeout index
+#define READ_END 0 //Read end of the pipe 
+#define SLEEP 2 //Sleep index
+#define INITIAL_SLEEP 1 //Initial sleep
+#define TO_MILI_SEC 1000 //Conversion from seconds to milliseconds
+
+
+#define SHM_NAME_BOARD "/game_state"
+#define SHM_NAME_SYNC "/game_sync"
+#define MAX_PLAYERS 9
+
 
 int main(int argc, char *argv[]) {
 
@@ -40,10 +51,10 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < num_players; i++){
         if (pipe_fd[i][0] > max_fd){
-            max_fd = pipe_fd[i][0];
+            max_fd = pipe_fd[i][READ_END];
         }
     }
-    sleep(1); //Delay to let the players start before the game starts.
+    sleep(INITIAL_SLEEP); //Delay to let the players start before the game starts.
 
 
 
@@ -56,11 +67,11 @@ int main(int argc, char *argv[]) {
         
         FD_ZERO(&read_fds);
         for (int i = 0; i < num_players; i++){
-            FD_SET(pipe_fd[i][0], &read_fds);
+            FD_SET(pipe_fd[i][READ_END], &read_fds);
             
         }
 
-        timeout.tv_sec = param_array[3];
+        timeout.tv_sec = param_array[TIMEOUT];
         timeout.tv_usec = 0;
 
         ready = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
@@ -76,7 +87,7 @@ int main(int argc, char *argv[]) {
         long elapsed_time = (current_time.tv_sec - last_valid_move_time.tv_sec) * 1000 +
                             (current_time.tv_usec - last_valid_move_time.tv_usec) / 1000;
  
-        if (elapsed_time > param_array[3] * 1000) {
+        if (elapsed_time > param_array[TIMEOUT] * TO_MILI_SEC) {
             board->has_ended = true;
             break;
         }
@@ -86,8 +97,8 @@ int main(int argc, char *argv[]) {
             if(board->player_list[index].is_blocked){
                 continue;
             }
-            if(FD_ISSET(pipe_fd[index][0], &read_fds)){
-                read(pipe_fd[index][0], &move, sizeof(unsigned char));
+            if(FD_ISSET(pipe_fd[index][READ_END], &read_fds)){
+                read(pipe_fd[index][READ_END], &move, sizeof(unsigned char));
 
                 sem_wait(&sync->game_state_mutex);
                 sem_wait(&sync->master_mutex); 
@@ -118,7 +129,7 @@ int main(int argc, char *argv[]) {
             if(view!=NULL){
                 sem_post(&sync->changes); 
                 sem_wait(&sync->view_done); 
-                usleep(param_array[2]*1000); 
+                usleep(param_array[SLEEP]*TO_MILI_SEC); // Sleep to let the view print the state of the game
             }  
             if (blocked_players == num_players){ 
                 board->has_ended = true;
@@ -147,7 +158,7 @@ int main(int argc, char *argv[]) {
             printf("Player %s (%d) exited (%d) with a score of %d/%d/%d \n", board->player_list[i].name, i, WEXITSTATUS(status), board->player_list[i].points, board->player_list[i].valid_moves, board->player_list[i].ilegal_moves);
         
         }
-        close(pipe_fd[i][0]); // Close the read end of the pipe
+        close(pipe_fd[i][READ_END]); // Close the read end of the pipe
     }
 
 
