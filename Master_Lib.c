@@ -1,7 +1,6 @@
 #include "Master_Lib.h"
 
-
-#define PI 3.14159265358979323846
+#define PI 3.14159265358979323846 // We use this define, because M_PI isn't working. 
 
 #define CAN_MOVE(x,y,width,height,new_pos)  (((x) >= 0 && (x) < (width)) && ((y) >= 0 && (y) < (height)) && ((new_pos) > 0))
 

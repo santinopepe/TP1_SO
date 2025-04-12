@@ -1,18 +1,18 @@
-#include "Utilis.h"
+#include "Shm_Structs.h"
 #include "Shm_Lib.h"
 #include <stdlib.h>
 
   
 const char *colors[] = {
-            "\x1B[31m", // Rojo
-            "\x1B[32m", // Verde
-            "\x1B[33m", // Amarillo
-            "\x1B[34m", // Azul
-            "\x1B[35m", // Magenta
-            "\x1B[36m", // Cian
-            "\x1B[95m", //Magenta brillante
-            "\x1B[96m", //Cyan brillante
-            "\x1B[93m" //Amarillo brillante
+            "\x1B[31m", // Red
+            "\x1B[32m", // Green
+            "\x1B[33m", // Yellow
+            "\x1B[34m", // Blue
+            "\x1B[35m", // Purple
+            "\x1B[36m", // Cyan
+            "\x1B[95m", // Bright Magenta
+            "\x1B[96m", // Bright Cyan
+            "\x1B[93m" // Bright Yellow
     };
 const char *reset_color = "\x1B[0m";
 
@@ -24,7 +24,7 @@ void print_board(Board * board) {
             bool is_head = false;
             for (int k = 0; k < board->num_players; k++) {
                 if (board->player_list[k].coord_x == j && board->player_list[k].coord_y == i) {
-                    printf(" %sΩ%s |", colors[k % 9], reset_color); // Cabeza de la serpiente
+                    printf(" %sΩ%s |", colors[k % 9], reset_color); // Print player head
                     is_head = true;
                     break;
                 }
@@ -72,10 +72,10 @@ int main(int argc, char * argv[]) {
 
         sem_wait(&(sync->changes));
 
-        // Imprimir el estado del juego
+        
         print_board(board);
         print_players(board);
-        // Indicar al máster que la vista terminó de imprimir
+        
         sem_post(&(sync->view_done));
         
     }

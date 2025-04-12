@@ -1,4 +1,8 @@
-#include "Utilis.h"
+#ifndef MASTER_LIB_H
+#define MASTER_LIB_H
+
+
+#include "Shm_Structs.h"
 #include "Shm_Lib.h"
 #include <time.h>
 #include <stdbool.h>
@@ -8,7 +12,10 @@
 #include <sys/select.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <math.h>
 
+
+#define MAX_PLAYERS 9
 
 /* This struct is used to store the initial 
 *  coordinates of the players.
@@ -132,3 +139,5 @@ void create_sem(sem_t * sem, int value);
 */
 
 bool is_valid_move(Board *board, Player *player, int move, int width, int height); 
+
+#endif // MASTER_LIB_H

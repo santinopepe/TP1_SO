@@ -1,3 +1,6 @@
+#ifndef SHM_LIB_H
+#define SHM_LIB_H
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -38,3 +41,4 @@ void close_shm(void * mem, int size);
 void delete_shm(char * name, void * mem, int size);
 
 
+#endif // SHM_LIB_H

@@ -1,5 +1,7 @@
 
 #include "Master_Lib.h"
+#include "Shm_Structs.h" 
+
 
 #define TIMEOUT 3   //Timeout index
 #define READ_END 0 //Read end of the pipe 
@@ -7,10 +9,6 @@
 #define INITIAL_SLEEP 1 //Initial sleep
 #define TO_MILI_SEC 1000 //Conversion from seconds to milliseconds
 
-
-#define SHM_NAME_BOARD "/game_state"
-#define SHM_NAME_SYNC "/game_sync"
-#define MAX_PLAYERS 9
 
 
 int main(int argc, char *argv[]) {
