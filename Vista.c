@@ -4,16 +4,16 @@
 
   
 const char *colors[] = {
-            "\x1B[31m", // Red
-            "\x1B[32m", // Green
-            "\x1B[33m", // Yellow
-            "\x1B[34m", // Blue
-            "\x1B[35m", // Purple
-            "\x1B[36m", // Cyan
-            "\x1B[95m", // Bright Magenta
-            "\x1B[96m", // Bright Cyan
-            "\x1B[93m" // Bright Yellow
-    };
+    "\x1B[38;5;196m", // Red
+    "\x1B[38;5;28m",  // Dark green
+    "\x1B[38;5;27m",  // Blue
+    "\x1B[38;5;220m", // Yellow
+    "\x1B[38;5;201m", // Magenta
+    "\x1B[38;5;51m",  // Cyan
+    "\x1B[38;5;88m",  // Brown
+    "\x1B[38;5;82m",  // Lime green
+    "\x1B[38;5;15m"   // White
+};
 const char *reset_color = "\x1B[0m";
 
 void print_board(Board * board) {
@@ -24,14 +24,14 @@ void print_board(Board * board) {
             bool is_head = false;
             for (int k = 0; k < board->num_players; k++) {
                 if (board->player_list[k].coord_x == j && board->player_list[k].coord_y == i) {
-                    printf(" %sΩ%s |", colors[k % 9], reset_color); // Print player head
+                    printf(" %s☻%s |", colors[k % 9], reset_color); // Print player head
                     is_head = true;
                     break;
                 }
             }
             if (!is_head) {
                 if (board->board_pointer[i * board->width + j] <= 0) {
-                    printf(" %s❒%s |", colors[(-1) * board->board_pointer[i * board->width + j]], reset_color);
+                    printf(" %s❖%s |", colors[(-1) * board->board_pointer[i * board->width + j]], reset_color);
                 } else {
                     printf(" %d |", board->board_pointer[i * board->width + j]);
                 }
@@ -41,7 +41,7 @@ void print_board(Board * board) {
     }
     printf("\n");
 }
-// Ϟ ❒
+
 void print_players(Board * board) {
     printf("Players:\n");
     for (int i = 0; i < board->num_players; i++) {

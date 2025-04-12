@@ -82,7 +82,8 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
       }      
   
-      while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
+      //while (board->board_pointer[(y+directions[move][1]) * width + (x+directions[move][0])] > 0);
+      sleep(1); // Simular tiempo de espera para el movimiento
     }     
     
   // Cleanup
