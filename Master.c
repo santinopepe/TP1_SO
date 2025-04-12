@@ -124,15 +124,17 @@ int main(int argc, char *argv[]) {
                 sem_post(&sync->master_mutex);
             }
             
+            if (blocked_players == num_players){ 
+                board->has_ended = true;
+                break;
+            } 
+
             if(view!=NULL){
                 sem_post(&sync->changes); 
                 sem_wait(&sync->view_done); 
                 usleep(param_array[SLEEP]*TO_MILI_SEC); // Sleep to let the view print the state of the game
             }  
-            if (blocked_players == num_players){ 
-                board->has_ended = true;
-                break;
-            }          
+                     
         }
 
         start++;
