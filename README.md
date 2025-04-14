@@ -9,7 +9,11 @@ El proyecto está compuesto por los siguientes archivos principales:
 - **`Master.c`**: Controla el flujo principal del juego, inicializa los jugadores, la vista y gestiona la lógica del juego.
 - **`Vista.c`**: Representa la vista del juego, mostrando el estado del tablero y los jugadores.
 - **`PlayerInteligente.c`**: Implementa un jugador con lógica inteligente para decidir sus movimientos.
-- **`Utilis.h`**: Contiene las definiciones de estructuras y funciones compartidas entre los diferentes módulos.
+- **`Shm_Structs.h`**: Contiene las definiciones de estructuras.
+- **`Master_Lib.c`**: Es la libreria de `Master.c`.
+- **`Master_Lib.h`**: Contiene las definiciones de las funciones de `Master_Lib.c`.
+- **`Shm_Lib.c`**: Es la libreria se utilizada para el uso de una memoria compartida.
+- **`Shm_Lib.h`**: Contiene las definiciones de las funciones de `Shm_Lib.c`.
 - **`Makefile`**: Facilita la compilación del proyecto.
 
 ## Compilación
