@@ -3,6 +3,8 @@
 #define PI 3.14159265358979323846 // We use this define, because M_PI isn't working. 
 
 #define CAN_MOVE(x,y,width,height,new_pos)  (((x) >= 0 && (x) < (width)) && ((y) >= 0 && (y) < (height)) && ((new_pos) > 0))
+#define READ_END 0 //Read end of the pipe
+#define WRITE_END 1 //Write end of the pipe
 
 const int movement[8][2] = {
     {0, -1},  // Up
@@ -129,11 +131,11 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
             exit(EXIT_FAILURE);
         } else if (pid > 0) {
             board->player_list[i].pid = pid;
-            close(write_fd[i][1]); // Close the write end of the pipe in the parent
+            close(write_fd[i][WRITE_END]); 
         }else {
-            close(write_fd[i][0]); // Close the read end of the pipe in the child
-            dup2(write_fd[i][1], STDOUT_FILENO); // Redirect stdout to the write end of the pipe
-            close(write_fd[i][1]);
+            close(write_fd[i][READ_END]); 
+            dup2(write_fd[i][WRITE_END], STDOUT_FILENO); 
+            close(write_fd[i][WRITE_END]);
 
             argv[0] = player_array[i];
 

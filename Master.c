@@ -7,7 +7,7 @@
 #define READ_END 0 //Read end of the pipe 
 #define SLEEP 2 //Sleep index
 #define INITIAL_SLEEP 1 //Initial sleep
-#define TO_MILI_SEC 1000 //Conversion from seconds to milliseconds
+#define TO_MILI_SEC 1000 //Conversion form microseconds to milliseconds
 
 
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
 
     for(int i = 0; i < num_players; i++){
-        if (pipe_fd[i][0] > max_fd){
+        if (pipe_fd[i][READ_END] > max_fd){
             max_fd = pipe_fd[i][READ_END];
         }
     }

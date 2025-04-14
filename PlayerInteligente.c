@@ -15,9 +15,7 @@ const int directions[8][2] = {
 };
 
 
-int find_best_path(Board *board, Player *player) {
-    // Possible directions: {dx, dy}
-   
+int find_best_path(Board *board, Player *player) {   
 
     int max_points, best_move, new_x, new_y;
 

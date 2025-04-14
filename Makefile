@@ -13,4 +13,4 @@ master:
 	$(CC) $(CFLAGS) Master.c Shm_Lib.c Master_Lib.c -o master.out -lm
 
 clean:
-	rm -f view.out player.out playerI.out master.out
+	rm -f view.out playerI.out master.out

@@ -24,7 +24,7 @@ void print_board(Board * board) {
             bool is_head = false;
             for (int k = 0; k < board->num_players; k++) {
                 if (board->player_list[k].coord_x == j && board->player_list[k].coord_y == i) {
-                    printf(" %s☻%s |", colors[k % 9], reset_color); // Print player head
+                    printf(" %s☻%s |", colors[k % 9], reset_color); 
                     is_head = true;
                     break;
                 }
@@ -63,7 +63,6 @@ int main(int argc, char * argv[]) {
     int height = atoi(argv[2]);
 
 
-    // Conectar a las memorias compartidas
     Board * board = (Board *) open_shm(SHM_NAME_BOARD, sizeof(Board) + sizeof(int)*width*height, O_RDONLY);
     Sinchronization * sync = (Sinchronization *) open_shm(SHM_NAME_SYNC, sizeof(Sinchronization), O_RDWR);
 
@@ -80,7 +79,6 @@ int main(int argc, char * argv[]) {
         
     }
 
-    // Cleanup
     close_shm(board, sizeof(Board) + sizeof(int)*width*height);
     close_shm(sync, sizeof(Sinchronization));
 
