@@ -133,6 +133,12 @@ pid_t initialize_game(Board * board, int param_array[], char * player_array[], i
             board->player_list[i].pid = pid;
             close(write_fd[i][WRITE_END]); 
         }else {
+            for (int j = 0; j < num_players; j++) {
+                if (j != i) {
+                    close(write_fd[j][READ_END]); 
+                    close(write_fd[j][WRITE_END]); 
+                }
+            }
             close(write_fd[i][READ_END]); 
             dup2(write_fd[i][WRITE_END], STDOUT_FILENO); 
             close(write_fd[i][WRITE_END]);

@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
     initialize_sync(sync);
     int max_fd=0;
     for (int i = 0; i < num_players; i++){
-
         if (pipe(pipe_fd[i]) == -1){
             perror("pipe");
             exit(EXIT_FAILURE);
