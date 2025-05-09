@@ -82,13 +82,13 @@ int main(int argc, char * argv[]){
     }
 
     while (!board->player_list[player_number].is_blocked && !board->has_ended) {
-        sem_wait(&sync->game_state_mutex); 
-        sem_post(&sync->game_state_mutex); 
+        sem_wait(&sync->master_mutex); 
+        sem_post(&sync->master_mutex); 
 
         sem_wait(&sync->variable_mutex);
         sync->readers_count++;
         if (sync->readers_count == 1) {
-            sem_wait(&sync->master_mutex);  // First reader locks the master
+            sem_wait(&sync->game_state_mutex);  // First reader locks the master
         }
         sem_post(&sync->variable_mutex);
 
@@ -100,7 +100,7 @@ int main(int argc, char * argv[]){
         sem_wait(&sync->variable_mutex);
         sync->readers_count--;
         if (sync->readers_count == 0) {
-            sem_post(&sync->master_mutex);  // Last reader unlocks the master
+            sem_post(&sync->game_state_mutex);  // Last reader unlocks the master
         }
         sem_post(&sync->variable_mutex);
 
